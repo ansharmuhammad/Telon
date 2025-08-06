@@ -1,18 +1,96 @@
-// Update this page (the content is just a fallback if you fail to update the page)
-
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Board as BoardType } from '@/types/trello';
+import { useAuth } from '@/contexts/AuthContext';
+import TrelloBoard from '@/components/trello/TrelloBoard';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">
-          Start building your amazing project here!
-        </p>
+  const { session } = useAuth();
+  const [board, setBoard] = useState<BoardType | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const getBoardData = useCallback(async () => {
+    if (!session?.user) return;
+    setLoading(true);
+
+    let { data: boardData } = await supabase
+      .from('boards')
+      .select('id, name')
+      .eq('user_id', session.user.id)
+      .limit(1)
+      .single();
+
+    if (!boardData) {
+      const { data: newBoard } = await supabase
+        .from('boards')
+        .insert({ name: 'My First Board', user_id: session.user.id })
+        .select('id, name')
+        .single();
+      
+      if (newBoard) {
+        boardData = newBoard;
+        const { data: lists } = await supabase.from('lists').insert([
+            { board_id: boardData.id, title: 'To Do', position: 1 },
+            { board_id: boardData.id, title: 'In Progress', position: 2 },
+            { board_id: boardData.id, title: 'Done', position: 3 },
+        ]).select('id').order('position');
+
+        if (lists && lists.length > 0) {
+            await supabase.from('cards').insert({
+                list_id: lists[0].id,
+                content: 'This is your first task!',
+                position: 1
+            });
+        }
+      }
+    }
+
+    if (!boardData) {
+        console.error('Could not create or find a board.');
+        setLoading(false);
+        return;
+    }
+
+    const { data: fullBoardData, error } = await supabase
+      .from('boards')
+      .select(`id, name, lists (id, title, position, cards (id, content, position))`)
+      .eq('id', boardData.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching board:', error);
+    } else if (fullBoardData) {
+      fullBoardData.lists.sort((a, b) => a.position - b.position);
+      fullBoardData.lists.forEach(list => list.cards.sort((a, b) => a.position - b.position));
+      setBoard(fullBoardData);
+    }
+    setLoading(false);
+  }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      getBoardData();
+    }
+  }, [session, getBoardData]);
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading your board...</div>;
+  }
+
+  if (!board) {
+    return (
+      <div className="p-8 text-center">
+        <p className="mb-4">We couldn't load your board. Please try again.</p>
+        <Button onClick={getBoardData}>Reload Board</Button>
       </div>
-      <MadeWithDyad />
-    </div>
+    );
+  }
+
+  return (
+    <main className="p-4 md:p-6 h-screen bg-gray-50">
+      <TrelloBoard initialBoard={board} />
+    </main>
   );
 };
 
