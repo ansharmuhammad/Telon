@@ -19,6 +19,14 @@ const formSchema = z.object({
   description: z.string().nullable(),
   start_date: z.date().nullable(),
   due_date: z.date().nullable(),
+}).refine(data => {
+  if (data.start_date && data.due_date) {
+    return data.due_date >= data.start_date;
+  }
+  return true;
+}, {
+  message: "Due date cannot be earlier than start date.",
+  path: ["due_date"],
 });
 
 type CardDetailsModalProps = {
@@ -31,6 +39,8 @@ type CardDetailsModalProps = {
 
 export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onDeleteCard }: CardDetailsModalProps) => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
+  const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,7 +85,7 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Start date</label>
-                <Popover>
+                <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('start_date') && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -83,13 +93,16 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={form.watch('start_date')} onSelect={(date) => form.setValue('start_date', date || null)} initialFocus />
+                    <Calendar mode="single" selected={form.watch('start_date')} onSelect={(date) => {form.setValue('start_date', date || null); setStartDatePopoverOpen(false);}} initialFocus />
+                    <div className="p-2 border-t border-border">
+                      <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('start_date', null); setStartDatePopoverOpen(false);}}>Clear</Button>
+                    </div>
                   </PopoverContent>
                 </Popover>
               </div>
               <div>
                 <label className="text-sm font-medium">Due date</label>
-                <Popover>
+                <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('due_date') && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -97,9 +110,15 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={form.watch('due_date')} onSelect={(date) => form.setValue('due_date', date || null)} initialFocus />
+                    <Calendar mode="single" selected={form.watch('due_date')} onSelect={(date) => {form.setValue('due_date', date || null); setDueDatePopoverOpen(false);}} initialFocus />
+                     <div className="p-2 border-t border-border">
+                      <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('due_date', null); setDueDatePopoverOpen(false);}}>Clear</Button>
+                    </div>
                   </PopoverContent>
                 </Popover>
+                {form.formState.errors.due_date && (
+                  <p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>
+                )}
               </div>
             </div>
           </div>

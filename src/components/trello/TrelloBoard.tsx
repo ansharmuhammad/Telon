@@ -14,43 +14,65 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
 
   useEffect(() => {
-    // DND logic remains the same
     return monitorForElements({
-      onDrop({ source, location }) {
+      onDrop: async ({ source, location }) => {
         const destination = location.current.dropTargets[0];
         if (!destination) return;
 
         const cardId = source.data.cardId as string;
+        if (!cardId) return;
+
         const destListId = destination.data.listId as string;
+        const destCardId = destination.data.cardId as string | undefined;
 
-        let sourceListId = '';
-        board.lists.forEach(list => {
-          if (list.cards.find(c => c.id === cardId)) {
-            sourceListId = list.id;
-          }
-        });
+        if (cardId === destCardId) return;
 
-        if (!sourceListId || sourceListId === destListId) return;
+        const originalBoard = JSON.parse(JSON.stringify(board));
+        let movedCard: CardType | undefined;
+        let sourceListId: string | undefined;
 
-        const originalBoard = { ...board };
-        setBoard(currentBoard => {
-          const newBoard = JSON.parse(JSON.stringify(currentBoard));
-          const sourceList = newBoard.lists.find(l => l.id === sourceListId)!;
-          const destList = newBoard.lists.find(l => l.id === destListId)!;
-          const cardIndex = sourceList.cards.findIndex(c => c.id === cardId);
-          const [movedCard] = sourceList.cards.splice(cardIndex, 1);
-          movedCard.list_id = destListId;
-          destList.cards.push(movedCard);
-          return newBoard;
-        });
-
-        supabase.from('cards').update({ list_id: destListId }).eq('id', cardId)
-          .then(({ error }) => {
-            if (error) {
-              showError('Failed to move card.');
-              setBoard(originalBoard);
+        // Find and remove card from source list
+        const tempBoard = JSON.parse(JSON.stringify(board));
+        for (const list of tempBoard.lists) {
+            const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
+            if (cardIndex > -1) {
+                sourceListId = list.id;
+                [movedCard] = list.cards.splice(cardIndex, 1);
+                break;
             }
-          });
+        }
+
+        if (!movedCard || !sourceListId) return;
+
+        const destList = tempBoard.lists.find((l: ListType) => l.id === destListId);
+        if (!destList) return;
+
+        const destIndex = destCardId ? destList.cards.findIndex((c: CardType) => c.id === destCardId) : destList.cards.length;
+        
+        // Insert card into destination list
+        destList.cards.splice(destIndex, 0, movedCard);
+
+        // Calculate new position
+        const cardBefore = destList.cards[destIndex - 1];
+        const cardAfter = destList.cards[destIndex + 1];
+        const posBefore = cardBefore ? cardBefore.position : 0;
+        const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
+        const newPosition = (posBefore + posAfter) / 2;
+
+        movedCard.position = newPosition;
+        movedCard.list_id = destListId;
+
+        setBoard(tempBoard);
+
+        const { error } = await supabase
+          .from('cards')
+          .update({ list_id: destListId, position: newPosition })
+          .eq('id', cardId);
+
+        if (error) {
+          showError('Failed to move card.');
+          setBoard(originalBoard);
+        }
       },
     });
   }, [board]);
@@ -59,7 +81,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     const list = board.lists.find(l => l.id === listId);
     if (!list) return;
     const newPosition = list.cards.length > 0 ? Math.max(...list.cards.map(c => c.position)) + 1 : 1;
-    const { data: newCard, error } = await supabase.from('cards').insert({ list_id: listId, content, position: newPosition }).select().single();
+    const { data: newCard, error } = await supabase.from('cards').insert({ list_id: listId, content, position: newPosition }).select('*').single();
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
