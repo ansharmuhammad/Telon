@@ -22,7 +22,6 @@ const formSchema = z.object({
   description: z.string().nullable(),
   start_date: z.date().nullable(),
   due_date: z.date().nullable(),
-  is_completed: z.boolean(),
   list_id: z.string(),
 }).refine(data => {
   if (data.start_date && data.due_date) {
@@ -49,6 +48,7 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
   const [showDates, setShowDates] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(card.is_completed);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,9 +61,9 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
         description: card.description || '',
         start_date: card.start_date ? new Date(card.start_date) : null,
         due_date: card.due_date ? new Date(card.due_date) : null,
-        is_completed: card.is_completed,
         list_id: card.list_id,
       });
+      setIsCompleted(card.is_completed);
       setShowDates(!!(card.start_date || card.due_date));
     }
   }, [isOpen, card, form.reset]);
@@ -75,6 +75,7 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
       ...updateData,
       start_date: values.start_date ? values.start_date.toISOString() : null,
       due_date: values.due_date ? values.due_date.toISOString() : null,
+      is_completed: isCompleted,
     };
 
     await onUpdateCard(card.id, cardUpdatePayload);
@@ -170,31 +171,18 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
                 <h3 className="text-sm font-medium mb-2">Add to card</h3>
                 {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
                 
-                <FormField
-                  control={form.control}
-                  name="is_completed"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="w-full justify-start"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            field.onChange(!field.value);
-                          }}
-                        >
-                          <Checkbox
-                            checked={field.value}
-                            className="mr-2 pointer-events-none"
-                          />
-                          {field.value ? 'Mark incomplete' : 'Mark complete'}
-                        </Button>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full justify-start"
+                  onClick={() => setIsCompleted(prev => !prev)}
+                >
+                  <Checkbox
+                    checked={isCompleted}
+                    className="mr-2 pointer-events-none"
+                  />
+                  {isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                </Button>
 
                 <div>
                   <h3 className="text-sm font-medium my-2">Actions</h3>
