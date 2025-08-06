@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, CheckSquare, Trash2 } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { CalendarIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -21,6 +22,8 @@ const formSchema = z.object({
   description: z.string().nullable(),
   start_date: z.date().nullable(),
   due_date: z.date().nullable(),
+  is_completed: z.boolean(),
+  list_id: z.string(),
 }).refine(data => {
   if (data.start_date && data.due_date) {
     return data.due_date >= data.start_date;
@@ -36,7 +39,7 @@ type CardDetailsModalProps = {
   lists: ListType[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
+  onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id'>>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
   onMoveCard: (cardId: string, newListId: string) => Promise<void>;
 };
@@ -54,16 +57,40 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
       description: card.description || '',
       start_date: card.start_date ? new Date(card.start_date) : null,
       due_date: card.due_date ? new Date(card.due_date) : null,
+      is_completed: card.is_completed,
+      list_id: card.list_id,
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        content: card.content,
+        description: card.description || '',
+        start_date: card.start_date ? new Date(card.start_date) : null,
+        due_date: card.due_date ? new Date(card.due_date) : null,
+        is_completed: card.is_completed,
+        list_id: card.list_id,
+      });
+      setShowDates(!!(card.start_date || card.due_date));
+    }
+  }, [isOpen, card, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const updateData = {
-      ...values,
+    const { list_id, ...updateData } = values;
+    
+    const cardUpdatePayload = {
+      ...updateData,
       start_date: values.start_date ? values.start_date.toISOString() : null,
       due_date: values.due_date ? values.due_date.toISOString() : null,
     };
-    await onUpdateCard(card.id, updateData);
+
+    await onUpdateCard(card.id, cardUpdatePayload);
+
+    if (list_id !== card.list_id) {
+      await onMoveCard(card.id, list_id);
+    }
+
     onOpenChange(false);
   };
 
@@ -73,82 +100,126 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
     onOpenChange(false);
   };
 
-  const handleMove = (newListId: string) => {
-    if (newListId !== card.list_id) {
-      onMoveCard(card.id, newListId);
-      onOpenChange(false);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle className="pr-8">
-              <Input {...form.register('content')} className="text-lg font-bold border-none shadow-none -ml-2" />
-            </DialogTitle>
-            {form.formState.errors.content && (
-              <p className="text-sm text-destructive -mt-2 ml-2">{form.formState.errors.content.message}</p>
-            )}
-          </DialogHeader>
-          <div className="py-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-6">
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <Textarea {...form.register('description')} placeholder="Add a more detailed description..." />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <DialogHeader>
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input {...field} className="text-lg font-bold border-none shadow-none -ml-2" />
+                    </FormControl>
+                    {form.formState.errors.content && (
+                      <p className="text-sm text-destructive ml-2">{form.formState.errors.content.message}</p>
+                    )}
+                  </FormItem>
+                )}
+              />
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 space-y-6">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} placeholder="Add a more detailed description..." />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {showDates && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium">Dates</label>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => { setShowDates(false); form.setValue('start_date', null); form.setValue('due_date', null); }}>Remove</Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="start_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">Start date</FormLabel>
+                            <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
+                              <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
+                              <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={(date) => {field.onChange(date); setStartDatePopoverOpen(false);}} initialFocus /><div className="p-2 border-t border-border"><Button variant="ghost" size="sm" className="w-full" onClick={() => {field.onChange(null); setStartDatePopoverOpen(false);}}>Clear</Button></div></PopoverContent>
+                            </Popover>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="due_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">Due date</FormLabel>
+                            <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
+                              <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
+                              <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value} onSelect={(date) => {field.onChange(date); setDueDatePopoverOpen(false);}} initialFocus /><div className="p-2 border-t border-border"><Button variant="ghost" size="sm" className="w-full" onClick={() => {field.onChange(null); setDueDatePopoverOpen(false);}}>Clear</Button></div></PopoverContent>
+                            </Popover>
+                            {form.formState.errors.due_date && (<p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>)}
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              {showDates && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium mb-2">Add to card</h3>
+                {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
+                
+                <FormField
+                  control={form.control}
+                  name="is_completed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => field.onChange(!field.value)}>
+                        <Checkbox checked={field.value} className="mr-2" /> {field.value ? 'Mark incomplete' : 'Mark complete'}
+                      </Button>
+                    </FormItem>
+                  )}
+                />
+
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium">Dates</label>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setShowDates(false); form.setValue('start_date', null); form.setValue('due_date', null); }}>Remove</Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-muted-foreground">Start date</label>
-                      <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
-                        <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('start_date') && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{form.watch('start_date') ? format(form.watch('start_date')!, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={form.watch('start_date')} onSelect={(date) => {form.setValue('start_date', date || null); setStartDatePopoverOpen(false);}} initialFocus /><div className="p-2 border-t border-border"><Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('start_date', null); setStartDatePopoverOpen(false);}}>Clear</Button></div></PopoverContent>
-                      </Popover>
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">Due date</label>
-                      <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
-                        <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('due_date') && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{form.watch('due_date') ? format(form.watch('due_date')!, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={form.watch('due_date')} onSelect={(date) => {form.setValue('due_date', date || null); setDueDatePopoverOpen(false);}} initialFocus /><div className="p-2 border-t border-border"><Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('due_date', null); setDueDatePopoverOpen(false);}}>Clear</Button></div></PopoverContent>
-                      </Popover>
-                      {form.formState.errors.due_date && (<p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>)}
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium my-2">Actions</h3>
+                  <FormField
+                    control={form.control}
+                    name="list_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Move card..." /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {lists.map(list => (<SelectItem key={list.id} value={list.id}>Move to {list.title}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+                    <AlertDialogTrigger asChild><Button type="button" variant="destructive" className="w-full justify-start mt-2"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger>
+                    <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the card. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                  </AlertDialog>
                 </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium mb-2">Add to card</h3>
-              {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
-              <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => onUpdateCard(card.id, { is_completed: !card.is_completed })}>
-                <Checkbox checked={card.is_completed} className="mr-2" /> {card.is_completed ? 'Mark incomplete' : 'Mark complete'}
-              </Button>
-              <div>
-                <h3 className="text-sm font-medium my-2">Actions</h3>
-                <Select onValueChange={handleMove} defaultValue={card.list_id}>
-                  <SelectTrigger><SelectValue placeholder="Move card..." /></SelectTrigger>
-                  <SelectContent>
-                    {lists.map(list => (<SelectItem key={list.id} value={list.id}>Move to {list.title}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-                  <AlertDialogTrigger asChild><Button type="button" variant="destructive" className="w-full justify-start mt-2"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger>
-                  <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the card. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit">Save</Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
