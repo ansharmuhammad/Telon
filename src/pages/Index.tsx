@@ -4,6 +4,7 @@ import { Board as BoardType } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
 import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
+import { Header } from '../components/Header';
 
 const Index = () => {
   const { session } = useAuth();
@@ -54,7 +55,7 @@ const Index = () => {
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
-      .select(`id, name, lists (id, title, position, cards (id, content, position))`)
+      .select(`id, name, lists (id, title, position, board_id, cards (id, content, position, list_id))`)
       .eq('id', boardData.id)
       .single();
 
@@ -63,7 +64,7 @@ const Index = () => {
     } else if (fullBoardData) {
       fullBoardData.lists.sort((a, b) => a.position - b.position);
       fullBoardData.lists.forEach(list => list.cards.sort((a, b) => a.position - b.position));
-      setBoard(fullBoardData);
+      setBoard(fullBoardData as BoardType);
     }
     setLoading(false);
   }, [session]);
@@ -88,9 +89,12 @@ const Index = () => {
   }
 
   return (
-    <main className="p-4 md:p-6 h-screen bg-gray-50">
-      <TrelloBoard initialBoard={board} />
-    </main>
+    <div className="h-screen flex flex-col bg-gray-50">
+      <Header />
+      <main className="flex-grow p-4 md:p-6 overflow-hidden">
+        <TrelloBoard initialBoard={board} />
+      </main>
+    </div>
   );
 };
 

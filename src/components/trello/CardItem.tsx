@@ -13,7 +13,7 @@ export const CardItem = ({ card }: { card: CardType }) => {
 
     return draggable({
       element: el,
-      getData: () => ({ cardId: card.id }),
+      getInitialData: () => ({ cardId: card.id }),
       onDragStart: () => setIsDragging(true),
       onDrop: () => setIsDragging(false),
     });

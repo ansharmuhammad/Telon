@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Board as BoardType, Card as CardType } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType } from '@/types/trello';
 import { Column } from './Column';
+import { AddListForm } from './AddListForm';
 import { supabase } from '@/integrations/supabase/client';
-import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/monitor/adapter';
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { showError, showSuccess } from '@/utils/toast';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;
@@ -55,7 +57,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
           .eq('id', cardId)
           .then(({ error }) => {
             if (error) {
-              console.error('Failed to move card:', error);
+              showError('Failed to move card.');
               setBoard(originalBoard);
             }
           });
@@ -63,13 +65,68 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     });
   }, [board]);
 
+  const handleAddCard = async (listId: string, content: string) => {
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) return;
+
+    const newPosition = list.cards.length > 0 ? Math.max(...list.cards.map(c => c.position)) + 1 : 1;
+
+    const { data: newCard, error } = await supabase
+      .from('cards')
+      .insert({ list_id: listId, content, position: newPosition })
+      .select()
+      .single();
+
+    if (error) {
+      showError('Failed to add card: ' + error.message);
+      return;
+    }
+
+    if (newCard) {
+      setBoard(currentBoard => {
+        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+        const targetList = newBoard.lists.find(l => l.id === listId);
+        if (targetList) {
+          targetList.cards.push(newCard);
+        }
+        return newBoard;
+      });
+      showSuccess('Card added!');
+    }
+  };
+
+  const handleAddList = async (title: string) => {
+    const newPosition = board.lists.length > 0 ? Math.max(...board.lists.map(l => l.position)) + 1 : 1;
+
+    const { data: newList, error } = await supabase
+      .from('lists')
+      .insert({ board_id: board.id, title, position: newPosition })
+      .select()
+      .single();
+
+    if (error) {
+      showError('Failed to add list: ' + error.message);
+      return;
+    }
+
+    if (newList) {
+      setBoard(currentBoard => {
+        const newBoard = JSON.parse(JSON.stringify(currentBoard));
+        newBoard.lists.push({ ...newList, cards: [] });
+        return newBoard;
+      });
+      showSuccess('List added!');
+    }
+  };
+
   return (
-    <div>
+    <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-4">{board.name}</h1>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
         {board.lists.map(list => (
-          <Column key={list.id} list={list} />
+          <Column key={list.id} list={list} onAddCard={handleAddCard} />
         ))}
+        <AddListForm onAddList={handleAddList} />
       </div>
     </div>
   );
