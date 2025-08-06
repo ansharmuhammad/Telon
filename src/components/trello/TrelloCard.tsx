@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Card as CardType } from '@/types/trello';
+import { Card as CardType, List as ListType } from '@/types/trello';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CardDetailsModal } from './CardDetailsModal';
@@ -10,11 +10,13 @@ import { cn } from '@/lib/utils';
 
 type TrelloCardProps = {
   card: CardType;
+  lists: ListType[];
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
+  onMoveCard: (cardId: string, newListId: string) => Promise<void>;
 };
 
-export const TrelloCard = ({ card, onUpdateCard, onDeleteCard }: TrelloCardProps) => {
+export const TrelloCard = ({ card, lists, onUpdateCard, onDeleteCard, onMoveCard }: TrelloCardProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,8 +105,10 @@ export const TrelloCard = ({ card, onUpdateCard, onDeleteCard }: TrelloCardProps
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         card={card}
+        lists={lists}
         onUpdateCard={onUpdateCard}
         onDeleteCard={onDeleteCard}
+        onMoveCard={onMoveCard}
       />
     </>
   );

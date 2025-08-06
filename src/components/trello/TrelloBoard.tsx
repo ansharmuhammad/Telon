@@ -36,43 +36,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     const destCardId = destData.cardId as string | undefined;
 
     if (cardId === destCardId) return;
-
-    const originalBoard = JSON.parse(JSON.stringify(board));
-    let movedCard: CardType | undefined;
-
-    const tempBoard = JSON.parse(JSON.stringify(board));
-    for (const list of tempBoard.lists) {
-      const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
-      if (cardIndex > -1) {
-        [movedCard] = list.cards.splice(cardIndex, 1);
-        break;
-      }
-    }
-
-    if (!movedCard) return;
-
-    const destList = tempBoard.lists.find((l: ListType) => l.id === destListId);
-    if (!destList) return;
-
-    const destIndex = destCardId ? destList.cards.findIndex((c: CardType) => c.id === destCardId) : destList.cards.length;
-    destList.cards.splice(destIndex, 0, movedCard);
-
-    const cardBefore = destList.cards[destIndex - 1];
-    const cardAfter = destList.cards[destIndex + 1];
-    const posBefore = cardBefore ? cardBefore.position : 0;
-    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
-    const newPosition = (posBefore + posAfter) / 2;
-
-    movedCard.position = newPosition;
-    movedCard.list_id = destListId;
-
-    setBoard(tempBoard);
-
-    const { error } = await supabase.from('cards').update({ list_id: destListId, position: newPosition }).eq('id', cardId);
-    if (error) {
-      showError('Failed to move card.');
-      setBoard(originalBoard);
-    }
+    await handleMoveCard(cardId, destListId, destCardId);
   };
 
   const handleListDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
@@ -80,27 +44,81 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     const destListId = destData.listId as string;
 
     if (sourceListId === destListId) return;
+    await handleMoveList(sourceListId, undefined, destListId);
+  };
 
+  const handleMoveCard = async (cardId: string, newListId: string, beforeCardId?: string) => {
     const originalBoard = JSON.parse(JSON.stringify(board));
+    let cardToMove: CardType | undefined;
+    let sourceListId: string | undefined;
+
     const tempBoard = JSON.parse(JSON.stringify(board));
+    for (const list of tempBoard.lists) {
+      const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
+      if (cardIndex > -1) {
+        sourceListId = list.id;
+        [cardToMove] = list.cards.splice(cardIndex, 1);
+        break;
+      }
+    }
 
-    const sourceListIndex = tempBoard.lists.findIndex((l: ListType) => l.id === sourceListId);
-    const [movedList] = tempBoard.lists.splice(sourceListIndex, 1);
+    if (!cardToMove || !sourceListId) return;
 
-    const destListIndex = tempBoard.lists.findIndex((l: ListType) => l.id === destListId);
-    tempBoard.lists.splice(destListIndex, 0, movedList);
+    const destList = tempBoard.lists.find((l: ListType) => l.id === newListId);
+    if (!destList) return;
 
-    const listBefore = tempBoard.lists[destListIndex - 1];
-    const listAfter = tempBoard.lists[destListIndex + 1];
-    const posBefore = listBefore ? listBefore.position : 0;
-    const posAfter = listAfter ? listAfter.position : (posBefore + 2);
+    const destIndex = beforeCardId ? destList.cards.findIndex((c: CardType) => c.id === beforeCardId) : destList.cards.length;
+    destList.cards.splice(destIndex, 0, cardToMove);
+
+    const cardBefore = destList.cards[destIndex - 1];
+    const cardAfter = destList.cards[destIndex + 1];
+    const posBefore = cardBefore ? cardBefore.position : 0;
+    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
     const newPosition = (posBefore + posAfter) / 2;
 
-    movedList.position = newPosition;
+    cardToMove.position = newPosition;
+    cardToMove.list_id = newListId;
 
     setBoard(tempBoard);
 
-    const { error } = await supabase.from('lists').update({ position: newPosition }).eq('id', sourceListId);
+    const { error } = await supabase.from('cards').update({ list_id: newListId, position: newPosition }).eq('id', cardId);
+    if (error) {
+      showError('Failed to move card.');
+      setBoard(originalBoard);
+    }
+  };
+
+  const handleMoveList = async (listId: string, direction?: 'left' | 'right', targetListId?: string) => {
+    const originalBoard = JSON.parse(JSON.stringify(board));
+    const lists = [...board.lists].sort((a, b) => a.position - b.position);
+    const currentIndex = lists.findIndex(l => l.id === listId);
+    if (currentIndex === -1) return;
+
+    let targetIndex: number;
+    if (direction) {
+      if (direction === 'left' && currentIndex === 0) return;
+      if (direction === 'right' && currentIndex === lists.length - 1) return;
+      targetIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    } else if (targetListId) {
+      targetIndex = lists.findIndex(l => l.id === targetListId);
+    } else {
+      return;
+    }
+    
+    const tempBoard = JSON.parse(JSON.stringify(board));
+    const [movedList] = tempBoard.lists.splice(currentIndex, 1);
+    tempBoard.lists.splice(targetIndex, 0, movedList);
+
+    const listBefore = tempBoard.lists[targetIndex - 1];
+    const listAfter = tempBoard.lists[targetIndex + 1];
+    const posBefore = listBefore ? listBefore.position : 0;
+    const posAfter = listAfter ? listAfter.position : (posBefore + 2);
+    const newPosition = (posBefore + posAfter) / 2;
+    
+    movedList.position = newPosition;
+    setBoard(tempBoard);
+
+    const { error } = await supabase.from('lists').update({ position: newPosition }).eq('id', listId);
     if (error) {
       showError('Failed to move list.');
       setBoard(originalBoard);
@@ -111,7 +129,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     const list = board.lists.find(l => l.id === listId);
     if (!list) return;
     const newPosition = list.cards.length > 0 ? Math.max(...list.cards.map(c => c.position)) + 1 : 1;
-    const { data: newCard, error } = await supabase.from('cards').insert({ list_id: listId, content, position: newPosition }).select('*').single();
+    const { data: newCard, error } = await supabase.from('cards').insert({ list_id: listId, content, position: newPosition, is_completed: false }).select('*').single();
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
@@ -182,15 +200,18 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-4">{board.name}</h1>
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
-        {board.lists.map(list => (
+        {board.lists.sort((a, b) => a.position - b.position).map(list => (
           <TrelloList
             key={list.id}
             list={list}
+            lists={board.lists.sort((a, b) => a.position - b.position)}
             onAddCard={handleAddCard}
             onUpdateCard={handleUpdateCard}
             onDeleteCard={handleDeleteCard}
             onUpdateList={handleUpdateList}
             onDeleteList={handleDeleteList}
+            onMoveCard={handleMoveCard}
+            onMoveList={handleMoveList}
           />
         ))}
         <AddListForm onAddList={handleAddList} />

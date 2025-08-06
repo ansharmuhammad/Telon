@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -21,20 +22,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Edit, Trash2, GripVertical } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
 
 type TrelloListProps = {
   list: ListType;
+  lists: ListType[];
   onAddCard: (listId: string, content: string) => Promise<void>;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
+  onMoveCard: (cardId: string, newListId: string) => Promise<void>;
+  onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
 
-export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList, onMoveCard, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -75,6 +79,10 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
     }
   };
 
+  const listIndex = lists.findIndex(l => l.id === list.id);
+  const canMoveLeft = listIndex > 0;
+  const canMoveRight = listIndex < lists.length - 1;
+
   return (
     <>
       <Card ref={ref} className={cn(
@@ -86,13 +94,7 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
           <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           {isEditing ? (
             <form onSubmit={handleTitleSubmit} className="flex-grow mx-2">
-              <Input
-                autoFocus
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => setIsEditing(false)}
-                className="h-8"
-              />
+              <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => setIsEditing(false)} className="h-8" />
             </form>
           ) : (
             <CardTitle className="text-base font-medium cursor-pointer flex-grow mx-2" onClick={() => setIsEditing(true)}>
@@ -101,19 +103,15 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit title
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-red-600">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete list
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onMoveList(list.id, 'left')} disabled={!canMoveLeft}><ArrowLeft className="mr-2 h-4 w-4" />Move Left</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMoveList(list.id, 'right')} disabled={!canMoveRight}><ArrowRight className="mr-2 h-4 w-4" />Move Right</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />Delete List</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -122,8 +120,10 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
             <TrelloCard
               key={card.id}
               card={card}
+              lists={lists}
               onUpdateCard={onUpdateCard}
               onDeleteCard={onDeleteCard}
+              onMoveCard={onMoveCard}
             />
           ))}
         </CardContent>
@@ -134,18 +134,8 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the list and all its cards. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onDeleteList(list.id)} className="bg-destructive hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the list and all its cards. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => onDeleteList(list.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
