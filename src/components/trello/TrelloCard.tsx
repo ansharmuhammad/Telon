@@ -102,7 +102,6 @@ export const TrelloCard = ({ card, lists, onUpdateCard, onDeleteCard, onMoveCard
       </Card>
 
       <CardDetailsModal
-        key={card.id}
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         card={card}

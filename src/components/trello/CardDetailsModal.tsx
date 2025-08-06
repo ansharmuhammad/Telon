@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -48,19 +48,25 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
-  const [showDates, setShowDates] = useState(!!(card.start_date || card.due_date));
+  const [showDates, setShowDates] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      content: card.content,
-      description: card.description || '',
-      start_date: card.start_date ? new Date(card.start_date) : null,
-      due_date: card.due_date ? new Date(card.due_date) : null,
-      is_completed: card.is_completed,
-      list_id: card.list_id,
-    },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        content: card.content,
+        description: card.description || '',
+        start_date: card.start_date ? new Date(card.start_date) : null,
+        due_date: card.due_date ? new Date(card.due_date) : null,
+        is_completed: card.is_completed,
+        list_id: card.list_id,
+      });
+      setShowDates(!!(card.start_date || card.due_date));
+    }
+  }, [isOpen, card, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const { list_id, ...updateData } = values;
