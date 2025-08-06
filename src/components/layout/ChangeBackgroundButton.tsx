@@ -73,7 +73,7 @@ export const ChangeBackgroundButton = ({ onBackgroundChange }: ChangeBackgroundB
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="hover:bg-primary/90">
+        <Button variant="ghost" className="hover:bg-gray-700">
           <ImageIcon className="mr-2 h-4 w-4" />
           Change Background
         </Button>
