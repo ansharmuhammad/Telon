@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogOut, Home } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { ChangeBackgroundButton } from './ChangeBackgroundButton';
 import { Board, BackgroundConfig } from '@/types/trello';
 
@@ -20,7 +20,14 @@ export const Header = ({ board, onBackgroundChange }: HeaderProps) => {
 
   return (
     <header className="flex items-center justify-between p-2 bg-gray-900 text-white">
-      <h1 className="text-xl font-bold">{board?.name || 'Trello Clone'}</h1>
+      <div className="flex items-center gap-4">
+        <Link to="/dashboard">
+          <Button variant="ghost" className="hover:bg-gray-700">
+            <Home className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-xl font-bold">{board?.name || 'Trello Clone'}</h1>
+      </div>
       <div className="flex items-center gap-2">
         <ChangeBackgroundButton onBackgroundChange={onBackgroundChange} />
         <Button variant="ghost" onClick={handleLogout} className="hover:bg-gray-700">

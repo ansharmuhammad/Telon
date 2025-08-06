@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!session && !isAuthPage) {
         navigate('/login');
       } else if (session && isAuthPage) {
-        navigate('/');
+        navigate('/dashboard');
       }
     }
   }, [session, loading, navigate, location.pathname]);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Board as BoardType, BackgroundConfig } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,53 +7,18 @@ import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { showError, showSuccess } from '@/utils/toast';
+import { Home } from 'lucide-react';
 
-const Index = () => {
+const BoardPage = () => {
+  const { boardId } = useParams<{ boardId: string }>();
   const { session } = useAuth();
+  const navigate = useNavigate();
   const [board, setBoard] = useState<BoardType | null>(null);
   const [loading, setLoading] = useState(true);
 
   const getBoardData = useCallback(async () => {
-    if (!session?.user) return;
+    if (!session?.user || !boardId) return;
     setLoading(true);
-
-    let { data: boardData } = await supabase
-      .from('boards')
-      .select('id, name, background_config')
-      .eq('user_id', session.user.id)
-      .limit(1)
-      .single();
-
-    if (!boardData) {
-      const { data: newBoard } = await supabase
-        .from('boards')
-        .insert({ name: 'My First Board', user_id: session.user.id })
-        .select('id, name, background_config')
-        .single();
-      
-      if (newBoard) {
-        boardData = newBoard;
-        const { data: lists } = await supabase.from('lists').insert([
-            { board_id: boardData.id, title: 'To Do', position: 1 },
-            { board_id: boardData.id, title: 'In Progress', position: 2 },
-            { board_id: boardData.id, title: 'Done', position: 3 },
-        ]).select('id').order('position');
-
-        if (lists && lists.length > 0) {
-            await supabase.from('cards').insert({
-                list_id: lists[0].id,
-                content: 'This is your first task!',
-                position: 1
-            });
-        }
-      }
-    }
-
-    if (!boardData) {
-        console.error('Could not create or find a board.');
-        setLoading(false);
-        return;
-    }
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
@@ -60,6 +26,7 @@ const Index = () => {
         id, 
         name, 
         background_config,
+        user_id,
         labels (*),
         lists (
           id, title, position, board_id,
@@ -71,28 +38,35 @@ const Index = () => {
           )
         )
       `)
-      .eq('id', boardData.id)
+      .eq('id', boardId)
       .single();
 
-    if (error) {
-      console.error('Error fetching board:', error);
-      setBoard(null);
-    } else if (fullBoardData) {
-      const boardWithMappedData: BoardType = {
-        ...fullBoardData,
-        lists: fullBoardData.lists.map(list => ({
-          ...list,
-          cards: list.cards.map((card: any) => {
-            const related_as_1 = card.relations_as_card1.map((r: any) => ({ id: r.card2.id, content: r.card2.content, list_title: r.card2.list.title }));
-            const related_as_2 = card.relations_as_card2.map((r: any) => ({ id: r.card1.id, content: r.card1.content, list_title: r.card1.list.title }));
-            return { ...card, labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), related_cards: [...related_as_1, ...related_as_2] }
-          }).sort((a, b) => a.position - b.position)
-        })).sort((a, b) => a.position - b.position)
-      };
-      setBoard(boardWithMappedData);
+    if (error || !fullBoardData) {
+      showError('Could not load board or you do not have access.');
+      navigate('/dashboard');
+      return;
     }
+    
+    if (fullBoardData.user_id !== session.user.id) {
+      showError('You do not have permission to view this board.');
+      navigate('/dashboard');
+      return;
+    }
+
+    const boardWithMappedData: BoardType = {
+      ...fullBoardData,
+      lists: fullBoardData.lists.map(list => ({
+        ...list,
+        cards: list.cards.map((card: any) => {
+          const related_as_1 = card.relations_as_card1.map((r: any) => ({ id: r.card2.id, content: r.card2.content, list_title: r.card2.list.title }));
+          const related_as_2 = card.relations_as_card2.map((r: any) => ({ id: r.card1.id, content: r.card1.content, list_title: r.card1.list.title }));
+          return { ...card, labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), related_cards: [...related_as_1, ...related_as_2] }
+        }).sort((a, b) => a.position - b.position)
+      })).sort((a, b) => a.position - b.position)
+    };
+    setBoard(boardWithMappedData);
     setLoading(false);
-  }, [session]);
+  }, [session, boardId, navigate]);
 
   useEffect(() => {
     if (session) {
@@ -123,14 +97,16 @@ const Index = () => {
     : {};
 
   if (loading) {
-    return <div className="p-8 text-center">Loading your board...</div>;
+    return <div className="flex items-center justify-center h-screen">Loading your board...</div>;
   }
 
   if (!board) {
     return (
       <div className="p-8 text-center">
         <p className="mb-4">We couldn't load your board. Please try again.</p>
-        <Button onClick={getBoardData}>Reload Board</Button>
+        <Link to="/dashboard">
+          <Button>Go to Dashboard</Button>
+        </Link>
       </div>
     );
   }
@@ -148,4 +124,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default BoardPage;
