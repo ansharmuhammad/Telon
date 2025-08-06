@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { List as ListType } from '@/types/trello';
+import { Card as CardType, List as ListType } from '@/types/trello';
 import { TrelloCard } from './TrelloCard';
 import { AddCardForm } from './AddCardForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,8 +27,8 @@ import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element
 type TrelloListProps = {
   list: ListType;
   onAddCard: (listId: string, content: string) => Promise<void>;
-  onUpdateCard: (cardId: string, content: string) => Promise<void>;
-  onDeleteCard: (cardId: string, listId: string) => Promise<void>;
+  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
+  onDeleteCard: (cardId: string) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
 };
@@ -104,7 +104,7 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
               key={card.id}
               card={card}
               onUpdateCard={onUpdateCard}
-              onDeleteCard={(cardId) => onDeleteCard(cardId, list.id)}
+              onDeleteCard={onDeleteCard}
             />
           ))}
         </CardContent>

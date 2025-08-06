@@ -79,17 +79,20 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     }
   };
 
-  const handleUpdateCard = async (cardId: string, content: string) => {
-    const { error } = await supabase.from('cards').update({ content }).eq('id', cardId);
+  const handleUpdateCard = async (cardId: string, data: Partial<CardType>) => {
+    const { error } = await supabase.from('cards').update(data).eq('id', cardId);
     if (error) {
       showError('Failed to update card.');
     } else {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, content } : c) })) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, ...data } : c) })) }));
       showSuccess('Card updated!');
     }
   };
 
-  const handleDeleteCard = async (cardId: string, listId: string) => {
+  const handleDeleteCard = async (cardId: string) => {
+    const listId = board.lists.find(l => l.cards.some(c => c.id === cardId))?.id;
+    if (!listId) return;
+
     const { error } = await supabase.from('cards').delete().eq('id', cardId);
     if (error) {
       showError('Failed to delete card.');

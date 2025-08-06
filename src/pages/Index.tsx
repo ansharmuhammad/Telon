@@ -55,7 +55,7 @@ const Index = () => {
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
-      .select(`id, name, lists (id, title, position, board_id, cards (id, content, position, list_id))`)
+      .select(`id, name, lists (id, title, position, board_id, cards (id, content, description, start_date, due_date, position, list_id))`)
       .eq('id', boardData.id)
       .single();
 

@@ -1,6 +1,9 @@
 export type Card = {
   id: string;
   content: string;
+  description: string | null;
+  start_date: string | null;
+  due_date: string | null;
   position: number;
   list_id: string;
 };
