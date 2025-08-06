@@ -19,63 +19,93 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
         const destination = location.current.dropTargets[0];
         if (!destination) return;
 
-        const cardId = source.data.cardId as string;
-        if (!cardId) return;
+        const type = source.data.type as 'card' | 'list';
 
-        const destListId = destination.data.listId as string;
-        const destCardId = destination.data.cardId as string | undefined;
-
-        if (cardId === destCardId) return;
-
-        const originalBoard = JSON.parse(JSON.stringify(board));
-        let movedCard: CardType | undefined;
-        let sourceListId: string | undefined;
-
-        // Find and remove card from source list
-        const tempBoard = JSON.parse(JSON.stringify(board));
-        for (const list of tempBoard.lists) {
-            const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
-            if (cardIndex > -1) {
-                sourceListId = list.id;
-                [movedCard] = list.cards.splice(cardIndex, 1);
-                break;
-            }
-        }
-
-        if (!movedCard || !sourceListId) return;
-
-        const destList = tempBoard.lists.find((l: ListType) => l.id === destListId);
-        if (!destList) return;
-
-        const destIndex = destCardId ? destList.cards.findIndex((c: CardType) => c.id === destCardId) : destList.cards.length;
-        
-        // Insert card into destination list
-        destList.cards.splice(destIndex, 0, movedCard);
-
-        // Calculate new position
-        const cardBefore = destList.cards[destIndex - 1];
-        const cardAfter = destList.cards[destIndex + 1];
-        const posBefore = cardBefore ? cardBefore.position : 0;
-        const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
-        const newPosition = (posBefore + posAfter) / 2;
-
-        movedCard.position = newPosition;
-        movedCard.list_id = destListId;
-
-        setBoard(tempBoard);
-
-        const { error } = await supabase
-          .from('cards')
-          .update({ list_id: destListId, position: newPosition })
-          .eq('id', cardId);
-
-        if (error) {
-          showError('Failed to move card.');
-          setBoard(originalBoard);
+        if (type === 'card') {
+          handleCardDrop(source.data, destination.data);
+        } else if (type === 'list') {
+          handleListDrop(source.data, destination.data);
         }
       },
     });
   }, [board]);
+
+  const handleCardDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
+    const cardId = sourceData.cardId as string;
+    const destListId = destData.listId as string;
+    const destCardId = destData.cardId as string | undefined;
+
+    if (cardId === destCardId) return;
+
+    const originalBoard = JSON.parse(JSON.stringify(board));
+    let movedCard: CardType | undefined;
+
+    const tempBoard = JSON.parse(JSON.stringify(board));
+    for (const list of tempBoard.lists) {
+      const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
+      if (cardIndex > -1) {
+        [movedCard] = list.cards.splice(cardIndex, 1);
+        break;
+      }
+    }
+
+    if (!movedCard) return;
+
+    const destList = tempBoard.lists.find((l: ListType) => l.id === destListId);
+    if (!destList) return;
+
+    const destIndex = destCardId ? destList.cards.findIndex((c: CardType) => c.id === destCardId) : destList.cards.length;
+    destList.cards.splice(destIndex, 0, movedCard);
+
+    const cardBefore = destList.cards[destIndex - 1];
+    const cardAfter = destList.cards[destIndex + 1];
+    const posBefore = cardBefore ? cardBefore.position : 0;
+    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
+    const newPosition = (posBefore + posAfter) / 2;
+
+    movedCard.position = newPosition;
+    movedCard.list_id = destListId;
+
+    setBoard(tempBoard);
+
+    const { error } = await supabase.from('cards').update({ list_id: destListId, position: newPosition }).eq('id', cardId);
+    if (error) {
+      showError('Failed to move card.');
+      setBoard(originalBoard);
+    }
+  };
+
+  const handleListDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
+    const sourceListId = sourceData.listId as string;
+    const destListId = destData.listId as string;
+
+    if (sourceListId === destListId) return;
+
+    const originalBoard = JSON.parse(JSON.stringify(board));
+    const tempBoard = JSON.parse(JSON.stringify(board));
+
+    const sourceListIndex = tempBoard.lists.findIndex((l: ListType) => l.id === sourceListId);
+    const [movedList] = tempBoard.lists.splice(sourceListIndex, 1);
+
+    const destListIndex = tempBoard.lists.findIndex((l: ListType) => l.id === destListId);
+    tempBoard.lists.splice(destListIndex, 0, movedList);
+
+    const listBefore = tempBoard.lists[destListIndex - 1];
+    const listAfter = tempBoard.lists[destListIndex + 1];
+    const posBefore = listBefore ? listBefore.position : 0;
+    const posAfter = listAfter ? listAfter.position : (posBefore + 2);
+    const newPosition = (posBefore + posAfter) / 2;
+
+    movedList.position = newPosition;
+
+    setBoard(tempBoard);
+
+    const { error } = await supabase.from('lists').update({ position: newPosition }).eq('id', sourceListId);
+    if (error) {
+      showError('Failed to move list.');
+      setBoard(originalBoard);
+    }
+  };
 
   const handleAddCard = async (listId: string, content: string) => {
     const list = board.lists.find(l => l.id === listId);
@@ -107,7 +137,11 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
       showError('Failed to update card.');
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, ...data } : c) })) }));
-      showSuccess('Card updated!');
+      if (data.is_completed !== undefined) {
+        showSuccess(data.is_completed ? 'Task completed!' : 'Task marked as not completed.');
+      } else {
+        showSuccess('Card updated!');
+      }
     }
   };
 

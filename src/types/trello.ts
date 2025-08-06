@@ -6,6 +6,7 @@ export type Card = {
   due_date: string | null;
   position: number;
   list_id: string;
+  is_completed: boolean;
 };
 
 export type List = {

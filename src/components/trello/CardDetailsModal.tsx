@@ -149,8 +149,7 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
             )}
           </div>
           <DialogFooter className="sm:justify-between">
-            <Button type="submit">Save</Button>
-            <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+             <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
               <AlertDialogTrigger asChild>
                 <Button type="button" variant="destructive">
                   <Trash2 className="mr-2 h-4 w-4" /> Delete Card
@@ -167,6 +166,7 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <Button type="submit">Save</Button>
           </DialogFooter>
         </form>
       </DialogContent>

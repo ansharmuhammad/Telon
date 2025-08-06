@@ -21,8 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
-import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { MoreHorizontal, Edit, Trash2, GripVertical } from 'lucide-react';
+import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { cn } from '@/lib/utils';
 
 type TrelloListProps = {
   list: ListType;
@@ -35,6 +36,7 @@ type TrelloListProps = {
 
 export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList }: TrelloListProps) => {
   const ref = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(list.title);
@@ -44,13 +46,25 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
     const el = ref.current;
     if (!el) return;
 
-    return dropTargetForElements({
+    const drag = draggable({
+      element: el,
+      getInitialData: () => ({ listId: list.id, type: 'list' }),
+      onDragStart: () => setIsDragging(true),
+      onDrop: () => setIsDragging(false),
+    });
+
+    const drop = dropTargetForElements({
       element: el,
       getData: () => ({ listId: list.id }),
       onDragEnter: () => setIsDraggedOver(true),
       onDragLeave: () => setIsDraggedOver(false),
       onDrop: () => setIsDraggedOver(false),
     });
+
+    return () => {
+      drag();
+      drop();
+    };
   }, [list.id]);
 
   const handleTitleSubmit = (e: React.FormEvent) => {
@@ -63,10 +77,15 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
 
   return (
     <>
-      <Card ref={ref} className={`w-72 flex-shrink-0 transition-colors ${isDraggedOver ? 'bg-secondary' : 'bg-gray-100'}`}>
+      <Card ref={ref} className={cn(
+        'w-72 flex-shrink-0 transition-colors',
+        isDraggedOver ? 'bg-secondary' : 'bg-gray-100',
+        isDragging && 'opacity-50'
+      )}>
         <CardHeader className="p-3 flex flex-row items-center justify-between">
+          <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           {isEditing ? (
-            <form onSubmit={handleTitleSubmit} className="flex-grow">
+            <form onSubmit={handleTitleSubmit} className="flex-grow mx-2">
               <Input
                 autoFocus
                 value={title}
@@ -76,7 +95,7 @@ export const TrelloList = ({ list, onAddCard, onUpdateCard, onDeleteCard, onUpda
               />
             </form>
           ) : (
-            <CardTitle className="text-base font-medium cursor-pointer" onClick={() => setIsEditing(true)}>
+            <CardTitle className="text-base font-medium cursor-pointer flex-grow mx-2" onClick={() => setIsEditing(true)}>
               {list.title}
             </CardTitle>
           )}
