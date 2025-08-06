@@ -41,6 +41,7 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
+  const [showDates, setShowDates] = useState(!!(card.start_date || card.due_date));
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,54 +74,79 @@ export const CardDetailsModal = ({ card, isOpen, onOpenChange, onUpdateCard, onD
       <DialogContent className="sm:max-w-[625px]">
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="pr-8">
               <Input {...form.register('content')} className="text-lg font-bold border-none shadow-none -ml-2" />
             </DialogTitle>
+            {form.formState.errors.content && (
+              <p className="text-sm text-destructive -mt-2 ml-2">{form.formState.errors.content.message}</p>
+            )}
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-6">
             <div>
               <label className="text-sm font-medium">Description</label>
               <Textarea {...form.register('description')} placeholder="Add a more detailed description..." />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            {showDates && (
               <div>
-                <label className="text-sm font-medium">Start date</label>
-                <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('start_date') && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.watch('start_date') ? format(form.watch('start_date')!, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={form.watch('start_date')} onSelect={(date) => {form.setValue('start_date', date || null); setStartDatePopoverOpen(false);}} initialFocus />
-                    <div className="p-2 border-t border-border">
-                      <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('start_date', null); setStartDatePopoverOpen(false);}}>Clear</Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium">Dates</label>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => {
+                    setShowDates(false);
+                    form.setValue('start_date', null);
+                    form.setValue('due_date', null);
+                  }}>Remove</Button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Start date</label>
+                    <Popover open={startDatePopoverOpen} onOpenChange={setStartDatePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('start_date') && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.watch('start_date') ? format(form.watch('start_date')!, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={form.watch('start_date')} onSelect={(date) => {form.setValue('start_date', date || null); setStartDatePopoverOpen(false);}} initialFocus />
+                        <div className="p-2 border-t border-border">
+                          <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('start_date', null); setStartDatePopoverOpen(false);}}>Clear</Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Due date</label>
+                    <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('due_date') && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.watch('due_date') ? format(form.watch('due_date')!, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={form.watch('due_date')} onSelect={(date) => {form.setValue('due_date', date || null); setDueDatePopoverOpen(false);}} initialFocus />
+                        <div className="p-2 border-t border-border">
+                          <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('due_date', null); setDueDatePopoverOpen(false);}}>Clear</Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    {form.formState.errors.due_date && (
+                      <p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>
+                    )}
+                  </div>
+                </div>
               </div>
+            )}
+
+            {!showDates && (
               <div>
-                <label className="text-sm font-medium">Due date</label>
-                <Popover open={dueDatePopoverOpen} onOpenChange={setDueDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !form.watch('due_date') && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {form.watch('due_date') ? format(form.watch('due_date')!, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={form.watch('due_date')} onSelect={(date) => {form.setValue('due_date', date || null); setDueDatePopoverOpen(false);}} initialFocus />
-                     <div className="p-2 border-t border-border">
-                      <Button variant="ghost" size="sm" className="w-full" onClick={() => {form.setValue('due_date', null); setDueDatePopoverOpen(false);}}>Clear</Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {form.formState.errors.due_date && (
-                  <p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>
-                )}
+                <h3 className="text-sm font-medium mb-2">Add to card</h3>
+                <Button type="button" variant="secondary" onClick={() => setShowDates(true)}>
+                  <CalendarIcon className="mr-2 h-4 w-4" /> Dates
+                </Button>
               </div>
-            </div>
+            )}
           </div>
           <DialogFooter className="sm:justify-between">
             <Button type="submit">Save</Button>
