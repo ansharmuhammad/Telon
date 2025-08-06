@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Card as CardType, List as ListType } from '@/types/trello';
+import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
 import { TrelloCard } from './TrelloCard';
 import { AddCardForm } from './AddCardForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 type TrelloListProps = {
   list: ListType;
   lists: ListType[];
+  boardLabels: LabelType[];
   onAddCard: (listId: string, content: string) => Promise<void>;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
@@ -36,9 +37,12 @@ type TrelloListProps = {
   onDeleteList: (listId: string) => Promise<void>;
   onMoveCard: (cardId: string, newListId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
+  onToggleLabelOnCard: (cardId: string, labelId: string) => Promise<void>;
+  onCreateLabel: (name: string, color: string) => Promise<void>;
+  onUpdateLabel: (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => Promise<void>;
 };
 
-export const TrelloList = ({ list, lists, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList, onMoveCard, onMoveList }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, boardLabels, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList, onMoveCard, onMoveList, onToggleLabelOnCard, onCreateLabel, onUpdateLabel }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -121,9 +125,13 @@ export const TrelloList = ({ list, lists, onAddCard, onUpdateCard, onDeleteCard,
               key={card.id}
               card={card}
               lists={lists}
+              boardLabels={boardLabels}
               onUpdateCard={onUpdateCard}
               onDeleteCard={onDeleteCard}
               onMoveCard={onMoveCard}
+              onToggleLabelOnCard={onToggleLabelOnCard}
+              onCreateLabel={onCreateLabel}
+              onUpdateLabel={onUpdateLabel}
             />
           ))}
         </CardContent>

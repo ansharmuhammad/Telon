@@ -55,16 +55,36 @@ const Index = () => {
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
-      .select(`id, name, lists (id, title, position, board_id, cards (id, content, description, start_date, due_date, position, list_id, is_completed))`)
+      .select(`
+        id, 
+        name, 
+        labels (id, name, color, board_id),
+        lists (
+          id, title, position, board_id, 
+          cards (
+            id, content, description, start_date, due_date, position, list_id, is_completed,
+            card_labels ( labels (id, name, color, board_id) )
+          )
+        )
+      `)
       .eq('id', boardData.id)
       .single();
 
     if (error) {
       console.error('Error fetching board:', error);
+      setBoard(null);
     } else if (fullBoardData) {
-      fullBoardData.lists.sort((a, b) => a.position - b.position);
-      fullBoardData.lists.forEach(list => list.cards.sort((a, b) => a.position - b.position));
-      setBoard(fullBoardData as BoardType);
+      const boardWithMappedData: BoardType = {
+        ...fullBoardData,
+        lists: fullBoardData.lists.map(list => ({
+          ...list,
+          cards: list.cards.map((card: any) => ({
+            ...card,
+            labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean)
+          })).sort((a, b) => a.position - b.position)
+        })).sort((a, b) => a.position - b.position)
+      };
+      setBoard(boardWithMappedData);
     }
     setLoading(false);
   }, [session]);

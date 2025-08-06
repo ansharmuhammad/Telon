@@ -1,3 +1,10 @@
+export type Label = {
+  id: string;
+  name: string | null;
+  color: string;
+  board_id: string;
+};
+
 export type Card = {
   id: string;
   content: string;
@@ -7,6 +14,7 @@ export type Card = {
   position: number;
   list_id: string;
   is_completed: boolean;
+  labels: Label[];
 };
 
 export type List = {
@@ -21,4 +29,5 @@ export type Board = {
   id: string;
   name: string;
   lists: List[];
+  labels: Label[];
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Board as BoardType, Card as CardType, List as ListType } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
 import { supabase } from '@/integrations/supabase/client';
@@ -133,7 +133,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, newCard] } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: []}] } : l) }));
       showSuccess('Card added!');
     }
   };
@@ -196,6 +196,53 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     }
   };
 
+  const handleCreateLabel = async (name: string, color: string) => {
+    const { data: newLabel, error } = await supabase.from('labels').insert({ board_id: board.id, name, color }).select().single();
+    if (error) {
+      showError('Failed to create label.');
+    } else if (newLabel) {
+      setBoard(b => ({ ...b, labels: [...b.labels, newLabel] }));
+      showSuccess('Label created!');
+    }
+  };
+
+  const handleUpdateLabel = async (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => {
+    const { error } = await supabase.from('labels').update(data).eq('id', labelId);
+    if (error) {
+      showError('Failed to update label.');
+    } else {
+      setBoard(b => ({ ...b, labels: b.labels.map(l => l.id === labelId ? { ...l, ...data } : l) }));
+      showSuccess('Label updated!');
+    }
+  };
+
+  const handleToggleLabelOnCard = async (cardId: string, labelId: string) => {
+    const card = board.lists.flatMap(l => l.cards).find(c => c.id === cardId);
+    if (!card) return;
+    const isApplied = card.labels.some(l => l.id === labelId);
+    
+    const originalBoard = JSON.parse(JSON.stringify(board));
+    const tempBoard = JSON.parse(JSON.stringify(board));
+    const cardToUpdate = tempBoard.lists.flatMap((l: ListType) => l.cards).find((c: CardType) => c.id === cardId);
+    
+    if (isApplied) {
+      cardToUpdate.labels = cardToUpdate.labels.filter((l: LabelType) => l.id !== labelId);
+    } else {
+      const labelToAdd = tempBoard.labels.find((l: LabelType) => l.id === labelId);
+      if (labelToAdd) cardToUpdate.labels.push(labelToAdd);
+    }
+    setBoard(tempBoard);
+
+    const { error } = isApplied
+      ? await supabase.from('card_labels').delete().match({ card_id: cardId, label_id: labelId })
+      : await supabase.from('card_labels').insert({ card_id: cardId, label_id: labelId });
+
+    if (error) {
+      showError('Failed to update label on card.');
+      setBoard(originalBoard);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-4">{board.name}</h1>
@@ -205,6 +252,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
             key={list.id}
             list={list}
             lists={board.lists.sort((a, b) => a.position - b.position)}
+            boardLabels={board.labels}
             onAddCard={handleAddCard}
             onUpdateCard={handleUpdateCard}
             onDeleteCard={handleDeleteCard}
@@ -212,6 +260,9 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
             onDeleteList={handleDeleteList}
             onMoveCard={handleMoveCard}
             onMoveList={handleMoveList}
+            onToggleLabelOnCard={handleToggleLabelOnCard}
+            onCreateLabel={handleCreateLabel}
+            onUpdateLabel={handleUpdateLabel}
           />
         ))}
         <AddListForm onAddList={handleAddList} />

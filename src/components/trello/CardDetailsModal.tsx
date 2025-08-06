@@ -3,19 +3,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Card as CardType, List as ListType } from '@/types/trello';
+import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { CalendarIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LabelPopover } from './LabelPopover';
 
 const formSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -36,19 +36,22 @@ const formSchema = z.object({
 type CardDetailsModalProps = {
   card: CardType;
   lists: ListType[];
+  boardLabels: LabelType[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id'>>) => Promise<void>;
+  onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id' | 'labels'>>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
   onMoveCard: (cardId: string, newListId: string) => Promise<void>;
+  onToggleLabelOnCard: (cardId: string, labelId: string) => Promise<void>;
+  onCreateLabel: (name: string, color: string) => Promise<void>;
+  onUpdateLabel: (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => Promise<void>;
 };
 
-export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard }: CardDetailsModalProps) => {
+export const CardDetailsModal = ({ card, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel }: CardDetailsModalProps) => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
   const [showDates, setShowDates] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(card.is_completed);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,7 +66,6 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
         due_date: card.due_date ? new Date(card.due_date) : null,
         list_id: card.list_id,
       });
-      setIsCompleted(card.is_completed);
       setShowDates(!!(card.start_date || card.due_date));
     }
   }, [isOpen, card, form.reset]);
@@ -75,7 +77,6 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
       ...updateData,
       start_date: values.start_date ? values.start_date.toISOString() : null,
       due_date: values.due_date ? values.due_date.toISOString() : null,
-      is_completed: isCompleted,
     };
 
     await onUpdateCard(card.id, cardUpdatePayload);
@@ -113,10 +114,26 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
                   </FormItem>
                 )}
               />
+              <div className="text-sm text-muted-foreground pl-2">
+                in list <span className="font-medium text-foreground">{lists.find(l => l.id === card.list_id)?.title}</span>
+              </div>
             </DialogHeader>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-6">
+                {card.labels.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Labels</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {card.labels.map(label => (
+                        <div key={label.id} className="rounded-sm px-3 py-1.5 text-sm font-bold text-white" style={{backgroundColor: label.color}}>
+                          {label.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <FormField
                   control={form.control}
                   name="description"
@@ -169,21 +186,15 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
               </div>
               <div className="space-y-2">
                 <h3 className="text-sm font-medium mb-2">Add to card</h3>
+                <LabelPopover 
+                  card={card}
+                  boardLabels={boardLabels}
+                  onToggleLabelOnCard={onToggleLabelOnCard}
+                  onCreateLabel={onCreateLabel}
+                  onUpdateLabel={onUpdateLabel}
+                />
                 {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
                 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full justify-start"
-                  onClick={() => setIsCompleted(prev => !prev)}
-                >
-                  <Checkbox
-                    checked={isCompleted}
-                    className="mr-2 pointer-events-none"
-                  />
-                  {isCompleted ? 'Mark incomplete' : 'Mark complete'}
-                </Button>
-
                 <div>
                   <h3 className="text-sm font-medium my-2">Actions</h3>
                   <FormField
