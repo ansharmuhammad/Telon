@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Board as BoardType } from '@/types/trello';
+import { Board as BoardType, Card as CardType, RelatedCardInfo } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
 import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
@@ -58,12 +58,14 @@ const Index = () => {
       .select(`
         id, 
         name, 
-        labels (id, name, color, board_id),
+        labels (*),
         lists (
-          id, title, position, board_id, 
+          id, title, position, board_id,
           cards (
-            id, content, description, start_date, due_date, position, list_id, is_completed,
-            card_labels ( labels (id, name, color, board_id) )
+            *,
+            card_labels ( labels (*) ),
+            relations_as_card1:card_relations!card1_id(card2_id, card2:cards!card2_id(id, content, list:lists(title))),
+            relations_as_card2:card_relations!card2_id(card1_id, card1:cards!card1_id(id, content, list:lists(title)))
           )
         )
       `)
@@ -78,10 +80,24 @@ const Index = () => {
         ...fullBoardData,
         lists: fullBoardData.lists.map(list => ({
           ...list,
-          cards: list.cards.map((card: any) => ({
-            ...card,
-            labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean)
-          })).sort((a, b) => a.position - b.position)
+          cards: list.cards.map((card: any) => {
+            const related_as_1: RelatedCardInfo[] = card.relations_as_card1.map((r: any) => ({
+              id: r.card2.id,
+              content: r.card2.content,
+              list_title: r.card2.list.title,
+            }));
+            const related_as_2: RelatedCardInfo[] = card.relations_as_card2.map((r: any) => ({
+              id: r.card1.id,
+              content: r.card1.content,
+              list_title: r.card1.list.title,
+            }));
+
+            return {
+              ...card,
+              labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean),
+              related_cards: [...related_as_1, ...related_as_2],
+            }
+          }).sort((a, b) => a.position - b.position)
         })).sort((a, b) => a.position - b.position)
       };
       setBoard(boardWithMappedData);

@@ -5,6 +5,12 @@ export type Label = {
   board_id: string;
 };
 
+export type RelatedCardInfo = {
+  id: string;
+  content: string;
+  list_title: string;
+};
+
 export type Card = {
   id: string;
   content: string;
@@ -15,6 +21,7 @@ export type Card = {
   list_id: string;
   is_completed: boolean;
   labels: Label[];
+  related_cards: RelatedCardInfo[];
 };
 
 export type List = {

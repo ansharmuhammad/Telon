@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
+import { CardDetailsModal } from './CardDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { showError, showSuccess } from '@/utils/toast';
@@ -12,6 +13,10 @@ type TrelloBoardProps = {
 
 const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
+  const [modalCardId, setModalCardId] = useState<string | null>(null);
+
+  const allCards = useMemo(() => board.lists.flatMap(l => l.cards), [board.lists]);
+  const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
 
   useEffect(() => {
     return monitorForElements({
@@ -133,7 +138,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: []}] } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: []}] } : l) }));
       showSuccess('Card added!');
     }
   };
@@ -243,6 +248,60 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     }
   };
 
+  const handleAddRelation = async (card1Id: string, card2Id: string) => {
+    const [id1, id2] = [card1Id, card2Id].sort();
+    const { error } = await supabase.from('card_relations').insert({ card1_id: id1, card2_id: id2 });
+
+    if (error) {
+      showError('Failed to add related card.');
+    } else {
+      const card1 = allCards.find(c => c.id === card1Id);
+      const card2 = allCards.find(c => c.id === card2Id);
+      if (!card1 || !card2) return;
+
+      const newBoard = { ...board };
+      const updateCard = (card: CardType, relatedCard: CardType) => {
+        const list = newBoard.lists.find(l => l.id === card.list_id);
+        if (!list) return;
+        const cardIndex = list.cards.findIndex(c => c.id === card.id);
+        if (cardIndex === -1) return;
+        list.cards[cardIndex].related_cards.push({ id: relatedCard.id, content: relatedCard.content, list_title: newBoard.lists.find(l => l.id === relatedCard.list_id)?.title || '' });
+      };
+      
+      updateCard(card1, card2);
+      updateCard(card2, card1);
+      
+      setBoard(newBoard);
+      showSuccess('Related card added.');
+    }
+  };
+
+  const handleRemoveRelation = async (card1Id: string, card2Id: string) => {
+    const [id1, id2] = [card1Id, card2Id].sort();
+    const { error } = await supabase.from('card_relations').delete().match({ card1_id: id1, card2_id: id2 });
+
+    if (error) {
+      showError('Failed to remove related card.');
+    } else {
+      const newBoard = { ...board };
+      const updateCard = (cardId: string, relatedCardId: string) => {
+        const card = allCards.find(c => c.id === cardId);
+        if (!card) return;
+        const list = newBoard.lists.find(l => l.id === card.list_id);
+        if (!list) return;
+        const cardIndex = list.cards.findIndex(c => c.id === card.id);
+        if (cardIndex === -1) return;
+        list.cards[cardIndex].related_cards = list.cards[cardIndex].related_cards.filter(rc => rc.id !== relatedCardId);
+      };
+
+      updateCard(card1Id, card2Id);
+      updateCard(card2Id, card1Id);
+
+      setBoard(newBoard);
+      showSuccess('Related card removed.');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-4">{board.name}</h1>
@@ -253,20 +312,35 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
             list={list}
             lists={board.lists.sort((a, b) => a.position - b.position)}
             boardLabels={board.labels}
+            onCardClick={(card) => setModalCardId(card.id)}
             onAddCard={handleAddCard}
-            onUpdateCard={handleUpdateCard}
-            onDeleteCard={handleDeleteCard}
             onUpdateList={handleUpdateList}
             onDeleteList={handleDeleteList}
-            onMoveCard={handleMoveCard}
             onMoveList={handleMoveList}
-            onToggleLabelOnCard={handleToggleLabelOnCard}
-            onCreateLabel={handleCreateLabel}
-            onUpdateLabel={handleUpdateLabel}
           />
         ))}
         <AddListForm onAddList={handleAddList} />
       </div>
+      {modalCard && (
+        <CardDetailsModal
+          key={modalCard.id}
+          isOpen={!!modalCardId}
+          onOpenChange={() => setModalCardId(null)}
+          card={modalCard}
+          allCards={allCards}
+          lists={board.lists}
+          boardLabels={board.labels}
+          onUpdateCard={handleUpdateCard}
+          onDeleteCard={handleDeleteCard}
+          onMoveCard={handleMoveCard}
+          onToggleLabelOnCard={handleToggleLabelOnCard}
+          onCreateLabel={handleCreateLabel}
+          onUpdateLabel={handleUpdateLabel}
+          onAddRelation={handleAddRelation}
+          onRemoveRelation={handleRemoveRelation}
+          onSelectCard={(cardId) => setModalCardId(cardId)}
+        />
+      )}
     </div>
   );
 };

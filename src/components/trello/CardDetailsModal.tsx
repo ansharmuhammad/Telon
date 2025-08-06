@@ -13,9 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { CalendarIcon, Trash2 } from 'lucide-react';
+import { CalendarIcon, Trash2, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LabelPopover } from './LabelPopover';
+import { RelatedCardsPopover } from './RelatedCardsPopover';
 
 const formSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -35,19 +36,23 @@ const formSchema = z.object({
 
 type CardDetailsModalProps = {
   card: CardType;
+  allCards: CardType[];
   lists: ListType[];
   boardLabels: LabelType[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id' | 'labels'>>) => Promise<void>;
+  onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id' | 'labels' | 'related_cards'>>) => Promise<void>;
   onDeleteCard: (cardId: string) => Promise<void>;
   onMoveCard: (cardId: string, newListId: string) => Promise<void>;
   onToggleLabelOnCard: (cardId: string, labelId: string) => Promise<void>;
   onCreateLabel: (name: string, color: string) => Promise<void>;
   onUpdateLabel: (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => Promise<void>;
+  onAddRelation: (card1Id: string, card2Id: string) => Promise<void>;
+  onRemoveRelation: (card1Id: string, card2Id: string) => Promise<void>;
+  onSelectCard: (cardId: string) => void;
 };
 
-export const CardDetailsModal = ({ card, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel }: CardDetailsModalProps) => {
+export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel, onAddRelation, onRemoveRelation, onSelectCard }: CardDetailsModalProps) => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
@@ -55,20 +60,25 @@ export const CardDetailsModal = ({ card, lists, boardLabels, isOpen, onOpenChang
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      content: card.content,
+      description: card.description || '',
+      start_date: card.start_date ? new Date(card.start_date) : null,
+      due_date: card.due_date ? new Date(card.due_date) : null,
+      list_id: card.list_id,
+    }
   });
 
   useEffect(() => {
-    if (isOpen) {
-      form.reset({
-        content: card.content,
-        description: card.description || '',
-        start_date: card.start_date ? new Date(card.start_date) : null,
-        due_date: card.due_date ? new Date(card.due_date) : null,
-        list_id: card.list_id,
-      });
-      setShowDates(!!(card.start_date || card.due_date));
-    }
-  }, [isOpen, card, form.reset]);
+    form.reset({
+      content: card.content,
+      description: card.description || '',
+      start_date: card.start_date ? new Date(card.start_date) : null,
+      due_date: card.due_date ? new Date(card.due_date) : null,
+      list_id: card.list_id,
+    });
+    setShowDates(!!(card.start_date || card.due_date));
+  }, [card, form.reset]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const { list_id, ...updateData } = values;
@@ -121,18 +131,30 @@ export const CardDetailsModal = ({ card, lists, boardLabels, isOpen, onOpenChang
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-6">
-                {card.labels.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Labels</h3>
-                    <div className="flex flex-wrap gap-1">
-                      {card.labels.map(label => (
-                        <div key={label.id} className="rounded-sm px-3 py-1.5 text-sm font-bold text-white" style={{backgroundColor: label.color}}>
-                          {label.name}
-                        </div>
-                      ))}
+                <div className="flex flex-wrap gap-4">
+                  {card.labels.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Labels</h3>
+                      <div className="flex flex-wrap gap-1">
+                        {card.labels.map(label => (
+                          <div key={label.id} className="rounded-sm px-3 py-1.5 text-sm font-bold text-white" style={{backgroundColor: label.color}}>
+                            {label.name}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                  {card.related_cards.length > 0 && (
+                     <div>
+                      <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Related Cards</h3>
+                      <div className="flex flex-wrap gap-1">
+                        {card.related_cards.map(rc => (
+                          <Button key={rc.id} variant="secondary" size="sm" onClick={() => onSelectCard(rc.id)}>{rc.content}</Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <FormField
                   control={form.control}
@@ -192,6 +214,12 @@ export const CardDetailsModal = ({ card, lists, boardLabels, isOpen, onOpenChang
                   onToggleLabelOnCard={onToggleLabelOnCard}
                   onCreateLabel={onCreateLabel}
                   onUpdateLabel={onUpdateLabel}
+                />
+                <RelatedCardsPopover
+                  card={card}
+                  allCards={allCards}
+                  onAddRelation={onAddRelation}
+                  onRemoveRelation={onRemoveRelation}
                 />
                 {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
                 

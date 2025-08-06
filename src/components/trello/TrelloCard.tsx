@@ -1,29 +1,22 @@
 import { useRef, useEffect, useState } from 'react';
-import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
+import { Card as CardType } from '@/types/trello';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CardDetailsModal } from './CardDetailsModal';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { AlignLeft, CalendarDays } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { showError } from '@/utils/toast';
 
 type TrelloCardProps = {
   card: CardType;
-  lists: ListType[];
-  boardLabels: LabelType[];
-  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
-  onDeleteCard: (cardId: string) => Promise<void>;
-  onMoveCard: (cardId: string, newListId: string) => Promise<void>;
-  onToggleLabelOnCard: (cardId: string, labelId: string) => Promise<void>;
-  onCreateLabel: (name: string, color: string) => Promise<void>;
-  onUpdateLabel: (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => Promise<void>;
+  onCardClick: (card: CardType) => void;
 };
 
-export const TrelloCard = ({ card, lists, boardLabels, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel }: TrelloCardProps) => {
+export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
 
   useEffect(() => {
@@ -52,8 +45,12 @@ export const TrelloCard = ({ card, lists, boardLabels, onUpdateCard, onDeleteCar
     };
   }, [card.id, card.list_id]);
 
-  const handleCheck = (checked: boolean) => {
-    onUpdateCard(card.id, { is_completed: checked });
+  const handleCheck = async (checked: boolean) => {
+    const { error } = await supabase.from('cards').update({ is_completed: checked }).eq('id', card.id);
+    if (error) {
+      showError('Failed to update task status.');
+    }
+    // No local state update needed, will be handled by parent component re-render
   };
 
   const dueDate = card.due_date ? new Date(card.due_date) : null;
@@ -74,62 +71,46 @@ export const TrelloCard = ({ card, lists, boardLabels, onUpdateCard, onDeleteCar
   );
 
   return (
-    <>
-      <Card
-        ref={ref}
-        onClick={() => setIsModalOpen(true)}
-        className={cn(
-          'bg-white cursor-pointer hover:bg-gray-50 relative',
-          isDragging && 'opacity-50',
-          card.is_completed && 'bg-gray-50'
+    <Card
+      ref={ref}
+      onClick={() => onCardClick(card)}
+      className={cn(
+        'bg-white cursor-pointer hover:bg-gray-50 relative',
+        isDragging && 'opacity-50',
+        card.is_completed && 'bg-gray-50'
+      )}
+    >
+      {isDraggedOver && <div className="absolute inset-0 bg-blue-200 opacity-50 rounded-md z-10" />}
+      <CardContent className="p-3">
+        {card.labels && card.labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {card.labels.map(label => (
+              <div
+                key={label.id}
+                className="h-2 rounded-sm w-10"
+                style={{ backgroundColor: label.color }}
+                title={label.name || ''}
+              />
+            ))}
+          </div>
         )}
-      >
-        {isDraggedOver && <div className="absolute inset-0 bg-blue-200 opacity-50 rounded-md z-10" />}
-        <CardContent className="p-3">
-          {card.labels && card.labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {card.labels.map(label => (
-                <div
-                  key={label.id}
-                  className="h-2 rounded-sm w-10"
-                  style={{ backgroundColor: label.color }}
-                  title={label.name || ''}
-                />
-              ))}
-            </div>
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id={`card-check-${card.id}`}
+            checked={card.is_completed}
+            onCheckedChange={(checked) => handleCheck(Boolean(checked))}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1"
+          />
+          <p className={cn("flex-grow", card.is_completed && "line-through text-muted-foreground")}>{card.content}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-2 pl-6">
+          {card.description && (
+            <AlignLeft className="h-4 w-4" />
           )}
-          <div className="flex items-start gap-2">
-            <Checkbox
-              id={`card-check-${card.id}`}
-              checked={card.is_completed}
-              onCheckedChange={handleCheck}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-1"
-            />
-            <p className={cn("flex-grow", card.is_completed && "line-through text-muted-foreground")}>{card.content}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-2 pl-6">
-            {card.description && (
-              <AlignLeft className="h-4 w-4" />
-            )}
-            {dueDateBadge}
-          </div>
-        </CardContent>
-      </Card>
-
-      <CardDetailsModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        card={card}
-        lists={lists}
-        boardLabels={boardLabels}
-        onUpdateCard={onUpdateCard}
-        onDeleteCard={onDeleteCard}
-        onMoveCard={onMoveCard}
-        onToggleLabelOnCard={onToggleLabelOnCard}
-        onCreateLabel={onCreateLabel}
-        onUpdateLabel={onUpdateLabel}
-      />
-    </>
+          {dueDateBadge}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

@@ -30,19 +30,14 @@ type TrelloListProps = {
   list: ListType;
   lists: ListType[];
   boardLabels: LabelType[];
+  onCardClick: (card: CardType) => void;
   onAddCard: (listId: string, content: string) => Promise<void>;
-  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
-  onDeleteCard: (cardId: string) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
-  onMoveCard: (cardId: string, newListId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
-  onToggleLabelOnCard: (cardId: string, labelId: string) => Promise<void>;
-  onCreateLabel: (name: string, color: string) => Promise<void>;
-  onUpdateLabel: (labelId: string, data: Partial<Pick<LabelType, 'name' | 'color'>>) => Promise<void>;
 };
 
-export const TrelloList = ({ list, lists, boardLabels, onAddCard, onUpdateCard, onDeleteCard, onUpdateList, onDeleteList, onMoveCard, onMoveList, onToggleLabelOnCard, onCreateLabel, onUpdateLabel }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -124,14 +119,7 @@ export const TrelloList = ({ list, lists, boardLabels, onAddCard, onUpdateCard, 
             <TrelloCard
               key={card.id}
               card={card}
-              lists={lists}
-              boardLabels={boardLabels}
-              onUpdateCard={onUpdateCard}
-              onDeleteCard={onDeleteCard}
-              onMoveCard={onMoveCard}
-              onToggleLabelOnCard={onToggleLabelOnCard}
-              onCreateLabel={onCreateLabel}
-              onUpdateLabel={onUpdateLabel}
+              onCardClick={onCardClick}
             />
           ))}
         </CardContent>
