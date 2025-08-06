@@ -4,7 +4,7 @@ import { Board as BoardType } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
 import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
-import { Header } from '../components/Header';
+import { Header } from '@/components/layout/Header';
 
 const Index = () => {
   const { session } = useAuth();
