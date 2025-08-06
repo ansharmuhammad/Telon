@@ -66,7 +66,7 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
       });
       setShowDates(!!(card.start_date || card.due_date));
     }
-  }, [isOpen, card, form]);
+  }, [isOpen, card, form.reset]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const { list_id, ...updateData } = values;
