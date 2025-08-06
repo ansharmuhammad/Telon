@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -169,9 +169,23 @@ export const CardDetailsModal = ({ card, lists, isOpen, onOpenChange, onUpdateCa
                   name="is_completed"
                   render={({ field }) => (
                     <FormItem>
-                      <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => field.onChange(!field.value)}>
-                        <Checkbox checked={field.value} className="mr-2" /> {field.value ? 'Mark incomplete' : 'Mark complete'}
-                      </Button>
+                      <FormControl>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="w-full justify-start"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            field.onChange(!field.value);
+                          }}
+                        >
+                          <Checkbox
+                            checked={field.value}
+                            className="mr-2 pointer-events-none"
+                          />
+                          {field.value ? 'Mark incomplete' : 'Mark complete'}
+                        </Button>
+                      </FormControl>
                     </FormItem>
                   )}
                 />
