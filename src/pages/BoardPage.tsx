@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Board as BoardType, BackgroundConfig, Checklist as ChecklistType, ChecklistItem } from '@/types/trello';
@@ -30,83 +30,109 @@ const BoardPage = () => {
   const [loading, setLoading] = useState(true);
   const [modalCardId, setModalCardId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const getBoardData = async () => {
-      if (!session?.user || !boardId) return;
-      setLoading(true);
+  const getBoardData = useCallback(async () => {
+    if (!session?.user || !boardId) return;
+    
+    // Keep loading state true only on initial fetch
+    if (!board) setLoading(true);
 
-      const { data: fullBoardData, error } = await supabase
-        .from('boards')
-        .select(`
-          id, 
-          name, 
-          background_config,
-          is_closed,
-          user_id,
-          labels (*),
-          lists (
-            id, title, position, board_id,
-            cards (
+    const { data: fullBoardData, error } = await supabase
+      .from('boards')
+      .select(`
+        id, 
+        name, 
+        background_config,
+        is_closed,
+        user_id,
+        labels (*),
+        lists (
+          id, title, position, board_id,
+          cards (
+            *,
+            cover_config,
+            card_labels ( labels (*) ),
+            relations_as_card1:card_relations!card1_id(card2_id, card2:cards!card2_id(id, content, list:lists(title))),
+            relations_as_card2:card_relations!card2_id(card1_id, card1:cards!card1_id(id, content, list:lists(title))),
+            checklists (
               *,
-              cover_config,
-              card_labels ( labels (*) ),
-              relations_as_card1:card_relations!card1_id(card2_id, card2:cards!card2_id(id, content, list:lists(title))),
-              relations_as_card2:card_relations!card2_id(card1_id, card1:cards!card1_id(id, content, list:lists(title))),
-              checklists (
-                *,
-                items:checklist_items(*)
-              ),
-              attachments:card_attachments(*)
-            )
+              items:checklist_items(*)
+            ),
+            attachments:card_attachments(*)
           )
-        `)
-        .eq('id', boardId)
-        .single();
+        )
+      `)
+      .eq('id', boardId)
+      .single();
 
-      if (error || !fullBoardData) {
-        showError('Could not load board or you do not have access.');
-        navigate('/dashboard');
-        return;
-      }
-      
-      if (fullBoardData.user_id !== session.user.id) {
-        showError('You do not have permission to view this board.');
-        navigate('/dashboard');
-        return;
-      }
+    if (error || !fullBoardData) {
+      showError('Could not load board or you do not have access.');
+      navigate('/dashboard');
+      return;
+    }
+    
+    if (fullBoardData.user_id !== session.user.id) {
+      showError('You do not have permission to view this board.');
+      navigate('/dashboard');
+      return;
+    }
 
-      const boardWithMappedData: BoardType = {
-        ...fullBoardData,
-        is_closed: fullBoardData.is_closed,
-        lists: fullBoardData.lists.map(list => ({
-          ...list,
-          cards: list.cards.map((card: any) => {
-            const related_as_1 = card.relations_as_card1.map((r: any) => ({ id: r.card2.id, content: r.card2.content, list_title: r.card2.list.title }));
-            const related_as_2 = card.relations_as_card2.map((r: any) => ({ id: r.card1.id, content: r.card1.content, list_title: r.card1.list.title }));
-            
-            const checklists = card.checklists.map((checklist: ChecklistType) => ({
-              ...checklist,
-              items: (checklist.items || []).sort((a: ChecklistItem, b: ChecklistItem) => a.position - b.position)
-            })).sort((a: ChecklistType, b: ChecklistType) => a.position - b.position);
+    const boardWithMappedData: BoardType = {
+      ...fullBoardData,
+      is_closed: fullBoardData.is_closed,
+      lists: fullBoardData.lists.map(list => ({
+        ...list,
+        cards: list.cards.map((card: any) => {
+          const related_as_1 = card.relations_as_card1.map((r: any) => ({ id: r.card2.id, content: r.card2.content, list_title: r.card2.list.title }));
+          const related_as_2 = card.relations_as_card2.map((r: any) => ({ id: r.card1.id, content: r.card1.content, list_title: r.card1.list.title }));
+          
+          const checklists = card.checklists.map((checklist: ChecklistType) => ({
+            ...checklist,
+            items: (checklist.items || []).sort((a: ChecklistItem, b: ChecklistItem) => a.position - b.position)
+          })).sort((a: ChecklistType, b: ChecklistType) => a.position - b.position);
 
-            return { 
-              ...card, 
-              labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), 
-              related_cards: [...related_as_1, ...related_as_2],
-              checklists: checklists,
-              attachments: card.attachments || []
-            }
-          }).sort((a, b) => a.position - b.position)
-        })).sort((a, b) => a.position - b.position)
-      };
-      setBoard(boardWithMappedData);
-      setLoading(false);
+          return { 
+            ...card, 
+            labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), 
+            related_cards: [...related_as_1, ...related_as_2],
+            checklists: checklists,
+            attachments: card.attachments || []
+          }
+        }).sort((a, b) => a.position - b.position)
+      })).sort((a, b) => a.position - b.position)
     };
+    setBoard(boardWithMappedData);
+    setLoading(false);
+  }, [boardId, session, navigate, board]);
 
+  useEffect(() => {
     if (session) {
       getBoardData();
     }
-  }, [session, boardId, navigate]);
+  }, [session, boardId, getBoardData]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!boardId) return;
+
+    const channel = supabase.channel(`board-changes:${boardId}`)
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+        console.log('Change received!', payload);
+        getBoardData();
+      })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Realtime subscribed for board ${boardId}`);
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error:', err);
+          showError('Realtime connection failed. Please refresh.');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boardId, getBoardData]);
 
   useEffect(() => {
     setModalCardId(searchParams.get('cardId'));
