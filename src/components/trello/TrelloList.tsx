@@ -115,9 +115,9 @@ export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, o
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
-        <CardContent className="flex flex-col gap-0 p-1 pt-0 min-h-[2rem]">
+        <CardContent className="flex flex-col gap-1 p-1 pt-0 min-h-[2rem]">
           {list.cards.map((card, index) => (
-            <div key={card.id} className="group/item">
+            <div key={card.id} className="relative group/item">
               <TrelloCard
                 card={card}
                 onCardClick={onCardClick}
@@ -135,15 +135,18 @@ export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, o
                   />
                 </div>
               ) : (
-                <div 
-                  className="h-8 -my-1 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer"
-                  onClick={() => setShowInlineAddForm(index)}
-                >
-                  <div className="w-full border-t-2 border-dashed border-gray-400 relative">
-                    <div className="absolute bg-gray-100 px-1 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <Plus className="h-4 w-4 text-gray-600" />
-                    </div>
-                  </div>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="rounded-full h-6 w-6 shadow-md"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowInlineAddForm(index);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
             </div>
