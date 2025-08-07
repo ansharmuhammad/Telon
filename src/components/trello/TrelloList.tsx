@@ -32,12 +32,13 @@ type TrelloListProps = {
   boardLabels: LabelType[];
   onCardClick: (card: CardType) => void;
   onAddCard: (listId: string, content: string, afterPosition?: number) => Promise<void>;
+  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
 
-export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -121,6 +122,7 @@ export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, o
               <TrelloCard
                 card={card}
                 onCardClick={onCardClick}
+                onUpdateCard={onUpdateCard}
               />
               {showInlineAddForm === index ? (
                 <div className="py-1">

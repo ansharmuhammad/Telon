@@ -6,16 +6,15 @@ import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-d
 import { AlignLeft, CalendarDays } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
 import { getCoverStyle } from '@/lib/utils';
 
 type TrelloCardProps = {
   card: CardType;
   onCardClick: (card: CardType) => void;
+  onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
 };
 
-export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
+export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -47,10 +46,7 @@ export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
   }, [card.id, card.list_id]);
 
   const handleCheck = async (checked: boolean) => {
-    const { error } = await supabase.from('cards').update({ is_completed: checked }).eq('id', card.id);
-    if (error) {
-      showError('Failed to update task status.');
-    }
+    await onUpdateCard(card.id, { is_completed: checked });
   };
 
   const dueDate = card.due_date ? new Date(card.due_date) : null;

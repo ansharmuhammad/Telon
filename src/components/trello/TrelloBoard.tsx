@@ -336,6 +336,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
             boardLabels={board.labels}
             onCardClick={(card) => onModalOpenChange(true, card.id)}
             onAddCard={handleAddCard}
+            onUpdateCard={handleUpdateCard}
             onUpdateList={handleUpdateList}
             onDeleteList={handleDeleteList}
             onMoveList={handleMoveList}
