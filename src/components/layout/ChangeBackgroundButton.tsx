@@ -168,7 +168,7 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="hover:bg-gray-700">
+        <Button variant="ghost" className="w-full justify-start rounded-none px-2 py-1.5 text-sm font-normal h-auto">
           <ImageIcon className="mr-2 h-4 w-4" />
           Change Background
         </Button>

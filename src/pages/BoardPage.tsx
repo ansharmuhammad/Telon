@@ -151,6 +151,24 @@ const BoardPage = () => {
     }
   };
 
+  const handleBoardNameChange = async (name: string) => {
+    if (!board) return;
+    const oldName = board.name;
+    setBoard(b => b ? { ...b, name } : null);
+
+    const { error } = await supabase
+      .from('boards')
+      .update({ name })
+      .eq('id', board.id);
+
+    if (error) {
+      showError('Failed to update board name.');
+      setBoard(b => b ? { ...b, name: oldName } : null);
+    } else {
+      showSuccess('Board name updated!');
+    }
+  };
+
   const backgroundStyle = board ? getBackgroundStyle(board.background_config) : {};
 
   if (loading) {
@@ -207,7 +225,7 @@ const BoardPage = () => {
       className="h-screen flex flex-col bg-gray-50 bg-cover bg-center"
       style={backgroundStyle}
     >
-      <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} />
+      <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} onBoardNameChange={handleBoardNameChange} />
       <main className="flex-grow p-4 md:p-6 overflow-hidden">
         <TrelloBoard initialBoard={board} />
       </main>

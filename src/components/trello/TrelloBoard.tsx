@@ -19,6 +19,10 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
   const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
 
   useEffect(() => {
+    setBoard(initialBoard);
+  }, [initialBoard]);
+
+  useEffect(() => {
     return monitorForElements({
       onDrop: async ({ source, location }) => {
         const destination = location.current.dropTargets[0];
@@ -111,8 +115,10 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     }
     
     const tempBoard = JSON.parse(JSON.stringify(board));
-    const [movedList] = tempBoard.lists.splice(currentIndex, 1);
-    tempBoard.lists.splice(targetIndex, 0, movedList);
+    const tempLists = tempBoard.lists.sort((a: ListType, b: ListType) => a.position - b.position);
+    const [movedList] = tempLists.splice(currentIndex, 1);
+    tempLists.splice(targetIndex, 0, movedList);
+    tempBoard.lists = tempLists;
 
     const listBefore = tempBoard.lists[targetIndex - 1];
     const listAfter = tempBoard.lists[targetIndex + 1];
@@ -165,7 +171,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     if (error) {
       showError('Failed to add list: ' + error.message);
     } else if (newList) {
-      setBoard(b => ({ ...b, lists: [...b.lists, { ...newList, cards: [] }] }));
+      setBoard(b => ({ ...b, lists: [...b.lists, { ...newList, cards: [] }].sort((a,b) => a.position - b.position) }));
       showSuccess('List added!');
     }
   };
@@ -320,7 +326,6 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
 
   return (
     <div className="h-full flex flex-col">
-      <h1 className="text-2xl font-bold mb-4">{board.name}</h1>
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
         {board.lists.sort((a, b) => a.position - b.position).map(list => (
           <TrelloList
