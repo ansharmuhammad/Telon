@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, Checklist, ChecklistItem } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
 import { CardDetailsModal } from './CardDetailsModal';
@@ -161,7 +161,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: []}].sort((a, b) => a.position - b.position) } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: []}].sort((a, b) => a.position - b.position) } : l) }));
       showSuccess('Card added!');
     }
   };
@@ -325,6 +325,70 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     }
   };
 
+  const handleAddChecklist = async (cardId: string, title: string) => {
+    const card = allCards.find(c => c.id === cardId);
+    if (!card) return;
+    const newPosition = card.checklists.length > 0 ? Math.max(...card.checklists.map(cl => cl.position)) + 1 : 1;
+    const { data, error } = await supabase.from('checklists').insert({ card_id: cardId, title, position: newPosition }).select().single();
+    if (error) {
+      showError('Failed to add checklist.');
+    } else {
+      const newChecklist = { ...data, items: [] };
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, checklists: [...c.checklists, newChecklist].sort((a,b) => a.position - b.position) } : c) })) }));
+      showSuccess('Checklist added!');
+    }
+  };
+
+  const handleUpdateChecklist = async (checklistId: string, title: string) => {
+    const { error } = await supabase.from('checklists').update({ title }).eq('id', checklistId);
+    if (error) {
+      showError('Failed to update checklist.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => cl.id === checklistId ? { ...cl, title } : cl) })) })) }));
+      showSuccess('Checklist updated!');
+    }
+  };
+
+  const handleDeleteChecklist = async (checklistId: string) => {
+    const { error } = await supabase.from('checklists').delete().eq('id', checklistId);
+    if (error) {
+      showError('Failed to delete checklist.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.filter(cl => cl.id !== checklistId) })) })) }));
+      showSuccess('Checklist deleted.');
+    }
+  };
+
+  const handleAddChecklistItem = async (checklistId: string, content: string) => {
+    const checklist = allCards.flatMap(c => c.checklists).find(cl => cl.id === checklistId);
+    if (!checklist) return;
+    const newPosition = checklist.items.length > 0 ? Math.max(...checklist.items.map(i => i.position)) + 1 : 1;
+    const { data, error } = await supabase.from('checklist_items').insert({ checklist_id: checklistId, content, position: newPosition }).select().single();
+    if (error) {
+      showError('Failed to add item.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => cl.id === checklistId ? { ...cl, items: [...cl.items, data].sort((a,b) => a.position - b.position) } : cl) })) })) }));
+    }
+  };
+
+  const handleUpdateChecklistItem = async (itemId: string, itemData: Partial<Pick<ChecklistItem, 'content' | 'is_completed'>>) => {
+    const { error } = await supabase.from('checklist_items').update(itemData).eq('id', itemId);
+    if (error) {
+      showError('Failed to update item.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => ({ ...cl, items: cl.items.map(i => i.id === itemId ? { ...i, ...itemData } : i) })) })) })) }));
+    }
+  };
+
+  const handleDeleteChecklistItem = async (itemId: string) => {
+    const { error } = await supabase.from('checklist_items').delete().eq('id', itemId);
+    if (error) {
+      showError('Failed to delete item.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => ({ ...cl, items: cl.items.filter(i => i.id !== itemId) })) })) })) }));
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
@@ -362,6 +426,12 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
           onAddRelation={handleAddRelation}
           onRemoveRelation={handleRemoveRelation}
           onSelectCard={(cardId) => onModalOpenChange(true, cardId)}
+          onAddChecklist={handleAddChecklist}
+          onUpdateChecklist={handleUpdateChecklist}
+          onDeleteChecklist={handleDeleteChecklist}
+          onAddChecklistItem={handleAddChecklistItem}
+          onUpdateChecklistItem={handleUpdateChecklistItem}
+          onDeleteChecklistItem={handleDeleteChecklistItem}
         />
       )}
     </div>

@@ -45,6 +45,22 @@ export type CoverConfigColor = BackgroundConfigColor & { size: 'full' | 'header'
 export type CoverConfigCustomImage = BackgroundConfigCustomImage & { size: 'full' | 'header' };
 export type CoverConfig = CoverConfigImage | CoverConfigColor | CoverConfigCustomImage | null;
 
+export type ChecklistItem = {
+  id: string;
+  content: string;
+  is_completed: boolean;
+  position: number;
+  checklist_id: string;
+};
+
+export type Checklist = {
+  id: string;
+  title: string;
+  position: number;
+  card_id: string;
+  items: ChecklistItem[];
+};
+
 export type Card = {
   id: string;
   content: string;
@@ -57,6 +73,7 @@ export type Card = {
   cover_config: CoverConfig;
   labels: Label[];
   related_cards: RelatedCardInfo[];
+  checklists: Checklist[];
 };
 
 export type List = {

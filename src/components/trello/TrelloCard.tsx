@@ -3,7 +3,7 @@ import { Card as CardType } from '@/types/trello';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { AlignLeft, CalendarDays } from 'lucide-react';
+import { AlignLeft, CalendarDays, CheckSquare } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
@@ -66,6 +66,19 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
     </span>
   );
 
+  const totalChecklistItems = card.checklists?.reduce((sum, cl) => sum + cl.items.length, 0) || 0;
+  const completedChecklistItems = card.checklists?.reduce((sum, cl) => sum + cl.items.filter(i => i.is_completed).length, 0) || 0;
+
+  const checklistBadge = totalChecklistItems > 0 && (
+    <span className={cn(
+      "flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
+      completedChecklistItems === totalChecklistItems ? "bg-green-100 text-green-800" : "bg-gray-200"
+    )}>
+      <CheckSquare className="h-3 w-3" />
+      <span>{completedChecklistItems}/{totalChecklistItems}</span>
+    </span>
+  );
+
   const { style: coverStyle, isDark } = getCoverStyle(card.cover_config);
   const hasFullCover = card.cover_config?.size === 'full';
 
@@ -124,6 +137,7 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
             <AlignLeft className="h-4 w-4" />
           )}
           {dueDateBadge}
+          {checklistBadge}
         </div>
       </div>
     </Card>

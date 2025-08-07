@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Card as CardType, List as ListType, Label as LabelType, CoverConfig } from '@/types/trello';
+import { Card as CardType, List as ListType, Label as LabelType, CoverConfig, Checklist as ChecklistType, ChecklistItem } from '@/types/trello';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +18,9 @@ import { cn } from '@/lib/utils';
 import { LabelPopover } from './LabelPopover';
 import { RelatedCardsPopover } from './RelatedCardsPopover';
 import { CoverPopover } from './CoverPopover';
+import { ChecklistPopover } from './ChecklistPopover';
+import { Checklist } from './Checklist';
+import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -51,9 +54,16 @@ type CardDetailsModalProps = {
   onAddRelation: (card1Id: string, card2Id: string) => Promise<void>;
   onRemoveRelation: (card1Id: string, card2Id: string) => Promise<void>;
   onSelectCard: (cardId: string) => void;
+  onAddChecklist: (cardId: string, title: string) => Promise<void>;
+  onUpdateChecklist: (checklistId: string, title: string) => Promise<void>;
+  onDeleteChecklist: (checklistId: string) => Promise<void>;
+  onAddChecklistItem: (checklistId: string, content: string) => Promise<void>;
+  onUpdateChecklistItem: (itemId: string, data: Partial<Pick<ChecklistItem, 'content' | 'is_completed'>>) => Promise<void>;
+  onDeleteChecklistItem: (itemId: string) => Promise<void>;
 };
 
-export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel, onAddRelation, onRemoveRelation, onSelectCard }: CardDetailsModalProps) => {
+export const CardDetailsModal = (props: CardDetailsModalProps) => {
+  const { card, allCards, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel, onAddRelation, onRemoveRelation, onSelectCard, onAddChecklist, onUpdateChecklist, onDeleteChecklist, onAddChecklistItem, onUpdateChecklistItem, onDeleteChecklistItem } = props;
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [dueDatePopoverOpen, setDueDatePopoverOpen] = useState(false);
@@ -210,6 +220,22 @@ export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, o
                     </div>
                   </div>
                 )}
+                {card.checklists && card.checklists.length > 0 && (
+                  <div className="space-y-6">
+                    <Separator />
+                    {card.checklists.map(checklist => (
+                      <Checklist
+                        key={checklist.id}
+                        checklist={checklist}
+                        onUpdateChecklist={onUpdateChecklist}
+                        onDeleteChecklist={onDeleteChecklist}
+                        onAddChecklistItem={onAddChecklistItem}
+                        onUpdateChecklistItem={onUpdateChecklistItem}
+                        onDeleteChecklistItem={onDeleteChecklistItem}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <h3 className="text-sm font-medium mb-2">Add to card</h3>
@@ -225,6 +251,7 @@ export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, o
                   onCreateLabel={onCreateLabel}
                   onUpdateLabel={onUpdateLabel}
                 />
+                <ChecklistPopover onAddChecklist={(title) => onAddChecklist(card.id, title)} />
                 <RelatedCardsPopover
                   card={card}
                   allCards={allCards}
