@@ -29,7 +29,7 @@ export const Header = ({ board, onBackgroundChange }: HeaderProps) => {
         <h1 className="text-xl font-bold">{board?.name || 'Trello Clone'}</h1>
       </div>
       <div className="flex items-center gap-2">
-        <ChangeBackgroundButton onBackgroundChange={onBackgroundChange} />
+        {board && <ChangeBackgroundButton boardId={board.id} onBackgroundChange={onBackgroundChange} />}
         <Button variant="ghost" onClick={handleLogout} className="hover:bg-gray-700">
           <LogOut className="mr-2 h-4 w-4" />
           Logout

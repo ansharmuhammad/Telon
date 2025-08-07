@@ -7,7 +7,7 @@ import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { showError, showSuccess } from '@/utils/toast';
-import { Home } from 'lucide-react';
+import { getBackgroundStyle } from '@/lib/utils';
 
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
@@ -92,11 +92,7 @@ const BoardPage = () => {
     }
   };
 
-  const backgroundStyle = board?.background_config
-    ? board.background_config.type === 'image'
-      ? { backgroundImage: `url(${board.background_config.fullUrl})` }
-      : { backgroundColor: board.background_config.color }
-    : {};
+  const backgroundStyle = board ? getBackgroundStyle(board.background_config) : {};
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading your board...</div>;

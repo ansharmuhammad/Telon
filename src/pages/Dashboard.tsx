@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { BackgroundConfig } from '@/types/trello';
+import { getBackgroundThumbnailStyle } from '@/lib/utils';
 
 type BoardSummary = {
   id: string;
@@ -102,11 +103,7 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {boards.map((board) => {
-              const boardStyle = board.background_config
-                ? board.background_config.type === 'image'
-                  ? { backgroundImage: `url(${board.background_config.thumbUrl})` }
-                  : { backgroundColor: board.background_config.color }
-                : {};
+              const boardStyle = getBackgroundThumbnailStyle(board.background_config);
 
               return (
                 <Link to={`/board/${board.id}`} key={board.id}>

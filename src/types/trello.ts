@@ -24,7 +24,12 @@ export type BackgroundConfigColor = {
   color: string;
 };
 
-export type BackgroundConfig = BackgroundConfigImage | BackgroundConfigColor | null;
+export type BackgroundConfigCustomImage = {
+  type: 'custom-image';
+  path: string;
+};
+
+export type BackgroundConfig = BackgroundConfigImage | BackgroundConfigColor | BackgroundConfigCustomImage | null;
 
 export type Card = {
   id: string;
