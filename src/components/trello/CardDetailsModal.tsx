@@ -7,8 +7,8 @@ import { Card as CardType, List as ListType, Label as LabelType, CoverConfig, Ch
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as AlertDialogDescriptionComponent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle as AlertDialogTitleComponent, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -174,6 +174,10 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <DialogHeader className="pr-8">
+                  <DialogTitle className="sr-only">Editing Card: {card.content}</DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Modify card details, add attachments, checklists, and more.
+                  </DialogDescription>
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id="card-completed-checkbox"
@@ -402,7 +406,7 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                       />
                       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                         <AlertDialogTrigger asChild><Button type="button" variant="destructive" className="w-full justify-start mt-2"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger>
-                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the card. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent><AlertDialogDescriptionComponent>This will permanently delete the card. This action cannot be undone.</AlertDialogDescriptionComponent></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                       </AlertDialog>
                     </div>
                   </div>
@@ -418,8 +422,8 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
       <AlertDialog open={!!renamingAttachment} onOpenChange={() => setRenamingAttachment(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rename Attachment</AlertDialogTitle>
-            <AlertDialogDescription>Enter a new name for the file.</AlertDialogDescription>
+            <AlertDialogTitleComponent>Rename Attachment</AlertDialogTitleComponent>
+            <AlertDialogDescriptionComponent>Enter a new name for the file.</AlertDialogDescriptionComponent>
           </AlertDialogHeader>
           <Input value={newAttachmentName} onChange={(e) => setNewAttachmentName(e.target.value)} />
           <AlertDialogFooter>

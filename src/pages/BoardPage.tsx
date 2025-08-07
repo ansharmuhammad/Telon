@@ -114,14 +114,15 @@ const BoardPage = () => {
   }, [session, getBoardData]);
 
   const handleModalOpenChange = (isOpen: boolean, cardId?: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
     if (isOpen && cardId) {
       setModalCardId(cardId);
+      newSearchParams.set('cardId', cardId);
     } else {
       setModalCardId(null);
-      // Clean up URL
-      searchParams.delete('cardId');
-      setSearchParams(searchParams, { replace: true });
+      newSearchParams.delete('cardId');
     }
+    setSearchParams(newSearchParams, { replace: true });
   };
 
   const handleBackgroundChange = async (newConfig: BackgroundConfig) => {
