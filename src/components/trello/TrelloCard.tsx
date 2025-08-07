@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { AlignLeft, CalendarDays, CheckSquare } from 'lucide-react';
-import { format, isPast, isToday } from 'date-fns';
+import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
 
@@ -50,8 +50,8 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   };
 
   const dueDate = card.due_date ? new Date(card.due_date) : null;
-  const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
-  const isDueSoon = dueDate && isToday(dueDate);
+  const isOverdue = dueDate && isPast(dueDate) && !card.is_completed;
+  const isDueSoon = dueDate && !isPast(dueDate) && differenceInHours(dueDate, new Date()) < 24 && !card.is_completed;
 
   const dueDateBadge = dueDate && (
     <span className={cn(
@@ -59,7 +59,7 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
       card.is_completed ? "bg-green-100 text-green-800" :
       isOverdue ? "bg-red-100 text-red-800" :
       isDueSoon ? "bg-yellow-100 text-yellow-800" :
-      "bg-transparent"
+      "bg-gray-200"
     )}>
       <CalendarDays className="h-3 w-3" />
       <span>{format(dueDate, 'MMM d')}</span>
