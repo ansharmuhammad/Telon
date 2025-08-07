@@ -1,3 +1,5 @@
+/// <reference types="https://esm.sh/@supabase/functions-js@2.4.1/src/edge-runtime.d.ts" />
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -30,50 +32,87 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
         { global: { headers: { Authorization: authHeader } } }
     )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
-
-    // Get the user to be invited from the public users table
-    const { data: invitedUserData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (userError || !invitedUserData) {
-      throw new Error("User not found. Please ensure the user has an account with this app.")
-    }
-    const invitedUserId = invitedUserData.id
-    
-    if (invitedUserId === user.id) {
-        throw new Error("You cannot invite yourself.")
-    }
+    const { data: { user: inviterUser } } = await supabase.auth.getUser()
+    if (!inviterUser) throw new Error("User not authenticated")
 
     // Check if the person sending the invite is an admin of the board
     const { data: inviterData, error: inviterError } = await supabaseAdmin
       .from('board_members')
       .select('role')
       .eq('board_id', board_id)
-      .eq('user_id', user.id)
+      .eq('user_id', inviterUser.id)
       .single()
 
     if (inviterError || inviterData?.role !== 'admin') {
         throw new Error("Only board admins can invite new members.")
     }
 
-    // Add the new user to the board_members table
-    const { error: insertError } = await supabaseAdmin
-      .from('board_members')
-      .insert({ board_id, user_id: invitedUserId, role: 'member' })
+    // Check if user exists in auth.users
+    const { data: { user: existingUser } } = await supabaseAdmin.auth.admin.getUserByEmail(email)
 
-    if (insertError) {
-      if (insertError.code === '23505') { // unique constraint violation
+    let invitedUserId: string;
+    let message: string;
+
+    if (existingUser) {
+      // User exists
+      invitedUserId = existingUser.id;
+      
+      if (invitedUserId === inviterUser.id) {
+        throw new Error("You cannot invite yourself.")
+      }
+
+      // Check if they are already a member
+      const { data: existingMember } = await supabaseAdmin
+        .from('board_members')
+        .select('user_id')
+        .eq('board_id', board_id)
+        .eq('user_id', invitedUserId)
+        .maybeSingle()
+
+      if (existingMember) {
         throw new Error("User is already a member of this board.")
       }
-      throw insertError
+
+      // Add to board_members
+      const { error: insertError } = await supabaseAdmin
+        .from('board_members')
+        .insert({ board_id, user_id: invitedUserId, role: 'member' })
+
+      if (insertError) throw insertError;
+      
+      message = "User added to board successfully."
+
+    } else {
+      // User does not exist, send an invite
+      // The redirectTo URL should be configured in your Supabase project's Auth settings.
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
+
+      if (inviteError) {
+        console.error("Invite error:", inviteError)
+        throw new Error(`Failed to invite user: ${inviteError.message}`)
+      }
+      
+      if (!inviteData || !inviteData.user) {
+        throw new Error("Could not create invitation for user.")
+      }
+
+      invitedUserId = inviteData.user.id
+
+      // Add the new (unconfirmed) user to the board_members table
+      const { error: insertError } = await supabaseAdmin
+        .from('board_members')
+        .insert({ board_id, user_id: invitedUserId, role: 'member' })
+
+      if (insertError) {
+        // If insert fails, we should probably delete the invited user to allow retry
+        await supabaseAdmin.auth.admin.deleteUser(invitedUserId)
+        throw insertError
+      }
+      
+      message = "Invitation email sent successfully."
     }
 
-    return new Response(JSON.stringify({ message: "User invited successfully." }), {
+    return new Response(JSON.stringify({ message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
