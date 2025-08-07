@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Image as ImageIcon, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { BackgroundConfig } from '@/types/trello';
@@ -16,6 +17,11 @@ type UnsplashImage = {
   userLink: string;
   alt: string;
 };
+
+const PRESET_COLORS = [
+  '#0079bf', '#d29034', '#519839', '#b04632', '#89609e',
+  '#cd5a91', '#4bbf6b', '#00aecc', '#838c91',
+];
 
 type ChangeBackgroundButtonProps = {
   onBackgroundChange: (config: BackgroundConfig) => void;
@@ -62,10 +68,19 @@ export const ChangeBackgroundButton = ({ onBackgroundChange }: ChangeBackgroundB
 
   const handleSelectImage = (image: UnsplashImage) => {
     onBackgroundChange({
+      type: 'image',
       fullUrl: image.fullUrl,
       thumbUrl: image.thumbUrl,
       userName: image.userName,
       userLink: image.userLink,
+    });
+    setIsOpen(false);
+  };
+
+  const handleSelectColor = (color: string) => {
+    onBackgroundChange({
+      type: 'color',
+      color: color,
     });
     setIsOpen(false);
   };
@@ -79,31 +94,50 @@ export const ChangeBackgroundButton = ({ onBackgroundChange }: ChangeBackgroundB
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
-        <div className="space-y-4">
-          <p className="text-sm font-medium text-center">Change Background</p>
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <Input
-              placeholder="Search photos..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <Button type="submit" size="icon" disabled={loading}>
-              <Search className="h-4 w-4" />
-            </Button>
-          </form>
-          <div className="grid grid-cols-3 gap-2 h-60 overflow-y-auto">
-            {loading && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
-            {!loading && images.map((image) => (
-              <button key={image.id} onClick={() => handleSelectImage(image)} className="relative group">
-                <img src={image.thumbUrl} alt={image.alt} className="h-20 w-full object-cover rounded-sm" />
-                <div className="absolute inset-0 bg-black/30 group-hover:opacity-100 opacity-0 transition-opacity" />
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-center text-muted-foreground">
-            Photos by <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline">Unsplash</a>
-          </p>
-        </div>
+        <Tabs defaultValue="photos" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="photos">Photos</TabsTrigger>
+            <TabsTrigger value="colors">Colors</TabsTrigger>
+          </TabsList>
+          <TabsContent value="photos" className="pt-4">
+            <div className="space-y-4">
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <Input
+                  placeholder="Search photos..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <Button type="submit" size="icon" disabled={loading}>
+                  <Search className="h-4 w-4" />
+                </Button>
+              </form>
+              <div className="grid grid-cols-3 gap-2 h-60 overflow-y-auto">
+                {loading && Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                {!loading && images.map((image) => (
+                  <button key={image.id} onClick={() => handleSelectImage(image)} className="relative group">
+                    <img src={image.thumbUrl} alt={image.alt} className="h-20 w-full object-cover rounded-sm" />
+                    <div className="absolute inset-0 bg-black/30 group-hover:opacity-100 opacity-0 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Photos by <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline">Unsplash</a>
+              </p>
+            </div>
+          </TabsContent>
+          <TabsContent value="colors" className="pt-4">
+            <div className="grid grid-cols-3 gap-2">
+              {PRESET_COLORS.map(color => (
+                <button
+                  key={color}
+                  style={{ backgroundColor: color }}
+                  className="h-12 w-full rounded-sm"
+                  onClick={() => handleSelectColor(color)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </PopoverContent>
     </Popover>
   );

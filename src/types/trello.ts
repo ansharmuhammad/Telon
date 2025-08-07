@@ -11,12 +11,20 @@ export type RelatedCardInfo = {
   list_title: string;
 };
 
-export type BackgroundConfig = {
+export type BackgroundConfigImage = {
+  type: 'image';
   fullUrl: string;
   thumbUrl: string;
   userName: string;
   userLink: string;
-} | null;
+};
+
+export type BackgroundConfigColor = {
+  type: 'color';
+  color: string;
+};
+
+export type BackgroundConfig = BackgroundConfigImage | BackgroundConfigColor | null;
 
 export type Card = {
   id: string;
@@ -32,7 +40,7 @@ export type Card = {
 };
 
 export type List = {
-  id: string;
+  id:string;
   title: string;
   position: number;
   board_id: string;

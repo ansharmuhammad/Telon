@@ -93,7 +93,9 @@ const BoardPage = () => {
   };
 
   const backgroundStyle = board?.background_config
-    ? { backgroundImage: `url(${board.background_config.fullUrl})` }
+    ? board.background_config.type === 'image'
+      ? { backgroundImage: `url(${board.background_config.fullUrl})` }
+      : { backgroundColor: board.background_config.color }
     : {};
 
   if (loading) {

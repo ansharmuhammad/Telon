@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
+import { BackgroundConfig } from '@/types/trello';
 
 type BoardSummary = {
   id: string;
   name: string;
-  background_config: { thumbUrl?: string } | null;
+  background_config: BackgroundConfig;
 };
 
 const Dashboard = () => {
@@ -34,7 +35,7 @@ const Dashboard = () => {
       showError('Failed to fetch boards.');
       console.error(error);
     } else {
-      setBoards(data);
+      setBoards(data as BoardSummary[]);
     }
     setLoading(false);
   }, [session]);
@@ -100,16 +101,24 @@ const Dashboard = () => {
           <p>Loading boards...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {boards.map((board) => (
-              <Link to={`/board/${board.id}`} key={board.id}>
-                <Card className="h-32 flex flex-col justify-end p-4 text-white font-bold bg-gray-700 bg-cover bg-center hover:opacity-90 transition-opacity"
-                  style={{ backgroundImage: board.background_config?.thumbUrl ? `url(${board.background_config.thumbUrl})` : undefined }}
-                >
-                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-                   <span className="relative z-10">{board.name}</span>
-                </Card>
-              </Link>
-            ))}
+            {boards.map((board) => {
+              const boardStyle = board.background_config
+                ? board.background_config.type === 'image'
+                  ? { backgroundImage: `url(${board.background_config.thumbUrl})` }
+                  : { backgroundColor: board.background_config.color }
+                : {};
+
+              return (
+                <Link to={`/board/${board.id}`} key={board.id}>
+                  <Card className="h-32 flex flex-col justify-end p-4 text-white font-bold bg-gray-700 bg-cover bg-center hover:opacity-90 transition-opacity relative"
+                    style={boardStyle}
+                  >
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors rounded-lg" />
+                    <span className="relative z-10">{board.name}</span>
+                  </Card>
+                </Link>
+              );
+            })}
              {boards.length === 0 && <p>You don't have any boards yet. Create one above!</p>}
           </div>
         )}
