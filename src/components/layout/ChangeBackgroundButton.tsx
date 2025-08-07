@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Image as ImageIcon, Search, Plus, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Search, Plus, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { BackgroundConfig } from '@/types/trello';
+import { BackgroundConfig, FileObject } from '@/types/trello';
 import { showError } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPublicUrl } from '@/lib/utils';
 
 type UnsplashImage = {
   id: string;
@@ -37,6 +38,8 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [customImages, setCustomImages] = useState<FileObject[]>([]);
+  const [fetchingCustom, setFetchingCustom] = useState(false);
 
   const searchImages = async (searchQuery: string) => {
     setLoading(true);
@@ -58,9 +61,28 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
     }
   };
 
+  const fetchCustomImages = async () => {
+    if (!session?.user) return;
+    setFetchingCustom(true);
+    const { data, error } = await supabase.storage
+      .from('board-backgrounds')
+      .list(`${session.user.id}/${boardId}`);
+    
+    if (error) {
+      showError('Failed to load custom images.');
+      console.error(error);
+    } else if (data) {
+      setCustomImages(data.filter(item => item.name !== '.emptyFolderPlaceholder'));
+    }
+    setFetchingCustom(false);
+  };
+
   useEffect(() => {
-    if (isOpen && images.length === 0) {
-      searchImages(query);
+    if (isOpen) {
+      if (images.length === 0) {
+        searchImages(query);
+      }
+      fetchCustomImages();
     }
   }, [isOpen]);
 
@@ -118,6 +140,28 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
       type: 'custom-image',
       path: filePath,
     });
+    fetchCustomImages();
+    setIsOpen(false);
+  };
+
+  const handleDeleteCustomImage = async (imageName: string) => {
+    if (!session?.user) return;
+    const imagePath = `${session.user.id}/${boardId}/${imageName}`;
+    const { error } = await supabase.storage.from('board-backgrounds').remove([imagePath]);
+    if (error) {
+      showError('Failed to delete image.');
+    } else {
+      setCustomImages(prev => prev.filter(img => img.name !== imageName));
+    }
+  };
+
+  const handleSelectCustomImage = (imageName: string) => {
+    if (!session?.user) return;
+    const imagePath = `${session.user.id}/${boardId}/${imageName}`;
+    onBackgroundChange({
+      type: 'custom-image',
+      path: imagePath,
+    });
     setIsOpen(false);
   };
 
@@ -162,6 +206,30 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
         <Separator className="my-4" />
         <div>
           <h3 className="text-sm font-medium mb-2 text-center">Custom</h3>
+          {fetchingCustom ? <Skeleton className="h-20 w-full" /> : (
+            <div className="grid grid-cols-3 gap-2 mb-4 max-h-48 overflow-y-auto">
+              {customImages.map(image => (
+                <div key={image.id} className="relative group">
+                  <button onClick={() => handleSelectCustomImage(image.name)} className="w-full">
+                    <img 
+                      src={getPublicUrl('board-backgrounds', `${session.user.id}/${boardId}/${image.name}`)} 
+                      className="h-20 w-full object-cover rounded-sm" 
+                      alt=""
+                    />
+                    <div className="absolute inset-0 bg-black/30 group-hover:opacity-100 opacity-0 transition-opacity rounded-sm" />
+                  </button>
+                  <Button 
+                    variant="destructive" 
+                    size="icon" 
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                    onClick={() => handleDeleteCustomImage(image.name)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
           <label htmlFor="custom-bg-upload" className="cursor-pointer flex items-center justify-center w-full h-20 rounded-md border-2 border-dashed border-muted-foreground/50 hover:border-muted-foreground">
             {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6 text-muted-foreground" />}
           </label>

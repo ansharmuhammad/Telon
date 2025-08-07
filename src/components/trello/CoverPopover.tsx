@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Image as ImageIcon, Search, Plus, Loader2, Check } from 'lucide-react';
+import { Image as ImageIcon, Search, Plus, Loader2, Check, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card as CardType, CoverConfig, BackgroundConfig } from '@/types/trello';
+import { Card as CardType, CoverConfig, BackgroundConfig, FileObject } from '@/types/trello';
 import { showError } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, getPublicUrl } from '@/lib/utils';
 
 type UnsplashImage = {
   id: string;
@@ -39,6 +38,8 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [attachments, setAttachments] = useState<FileObject[]>([]);
+  const [fetchingAttachments, setFetchingAttachments] = useState(false);
 
   const searchImages = async (searchQuery: string) => {
     setLoading(true);
@@ -55,11 +56,30 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
     }
   };
 
-  useEffect(() => {
-    if (isOpen && images.length === 0) {
-      searchImages(query);
+  const fetchAttachments = async () => {
+    if (!session?.user) return;
+    setFetchingAttachments(true);
+    const { data, error } = await supabase.storage
+      .from('card-covers')
+      .list(`${session.user.id}/${card.id}`);
+    
+    if (error) {
+      showError('Failed to load attachments.');
+      console.error(error);
+    } else if (data) {
+      setAttachments(data.filter(item => item.name !== '.emptyFolderPlaceholder'));
     }
-  }, [isOpen]);
+    setFetchingAttachments(false);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      if (images.length === 0) {
+        searchImages(query);
+      }
+      fetchAttachments();
+    }
+  }, [isOpen, card.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +114,21 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
       showError('Failed to upload image. Make sure the `card-covers` bucket exists.');
     } else {
       handleSelect({ type: 'custom-image', path: filePath });
+      fetchAttachments();
+    }
+  };
+
+  const handleDeleteAttachment = async (imageName: string) => {
+    if (!session?.user) return;
+    const imagePath = `${session.user.id}/${card.id}/${imageName}`;
+    const { error } = await supabase.storage.from('card-covers').remove([imagePath]);
+    if (error) {
+      showError('Failed to delete attachment.');
+    } else {
+      setAttachments(prev => prev.filter(img => img.name !== imageName));
+      if (card.cover_config?.type === 'custom-image' && card.cover_config.path === imagePath) {
+        onCoverChange(null);
+      }
     }
   };
 
@@ -125,7 +160,7 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="colors">Colors</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
-              <TabsTrigger value="custom">Upload</TabsTrigger>
+              <TabsTrigger value="attachments">Attachments</TabsTrigger>
             </TabsList>
             <TabsContent value="colors" className="pt-4">
               <div className="grid grid-cols-5 gap-2">
@@ -154,11 +189,40 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
                 })}
               </div>
             </TabsContent>
-            <TabsContent value="custom" className="pt-4">
-              <label htmlFor="custom-cover-upload" className="cursor-pointer flex items-center justify-center w-full h-24 rounded-md border-2 border-dashed border-muted-foreground/50 hover:border-muted-foreground">
-                {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6 text-muted-foreground" />}
-              </label>
-              <Input id="custom-cover-upload" type="file" className="hidden" onChange={handleFileUpload} accept="image/png, image/jpeg" disabled={uploading} />
+            <TabsContent value="attachments" className="pt-4">
+              <div className="space-y-4">
+                {fetchingAttachments ? <Skeleton className="h-20 w-full" /> : (
+                  <div className="grid grid-cols-2 gap-2 h-40 overflow-y-auto">
+                    {attachments.map(image => {
+                      const imagePath = `${session.user.id}/${card.id}/${image.name}`;
+                      return (
+                        <div key={image.id} className="relative group">
+                          <button onClick={() => handleSelect({ type: 'custom-image', path: imagePath })} className="w-full">
+                            <img 
+                              src={getPublicUrl('card-covers', imagePath)} 
+                              className="h-20 w-full object-cover rounded-sm" 
+                              alt=""
+                            />
+                            <div className="absolute inset-0 bg-black/30 group-hover:opacity-100 opacity-0 transition-opacity rounded-sm" />
+                          </button>
+                          <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={() => handleDeleteAttachment(image.name)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <label htmlFor="custom-cover-upload" className="cursor-pointer flex items-center justify-center w-full h-24 rounded-md border-2 border-dashed border-muted-foreground/50 hover:border-muted-foreground">
+                  {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6 text-muted-foreground" />}
+                </label>
+                <Input id="custom-cover-upload" type="file" className="hidden" onChange={handleFileUpload} accept="image/png, image/jpeg" disabled={uploading} />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
