@@ -32,8 +32,6 @@ const BoardPage = () => {
 
   const getBoardData = useCallback(async () => {
     if (!session?.user || !boardId) return;
-    
-    if (!board) setLoading(true);
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
@@ -66,6 +64,7 @@ const BoardPage = () => {
     if (error || !fullBoardData) {
       showError('Could not load board or you do not have access.');
       navigate('/dashboard');
+      setLoading(false);
       return;
     }
 
@@ -95,7 +94,7 @@ const BoardPage = () => {
     };
     setBoard(boardWithMappedData);
     setLoading(false);
-  }, [boardId, session, navigate, board]);
+  }, [boardId, session, navigate]);
 
   useEffect(() => {
     if (session) {
