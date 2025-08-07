@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 function getPublicUrl(path: string) {
-  const { data } = supabase.storage.from('board_backgrounds').getPublicUrl(path);
+  const { data } = supabase.storage.from('board-backgrounds').getPublicUrl(path);
   return data.publicUrl;
 }
 

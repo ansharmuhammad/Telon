@@ -104,12 +104,12 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
 
     setUploading(true);
     const { error: uploadError } = await supabase.storage
-      .from('board_backgrounds')
+      .from('board-backgrounds')
       .upload(filePath, file);
     setUploading(false);
 
     if (uploadError) {
-      showError('Failed to upload image. Make sure the file is an image and the `board_backgrounds` storage bucket exists.');
+      showError('Failed to upload image. Make sure the file is an image and the `board-backgrounds` storage bucket exists.');
       console.error(uploadError);
       return;
     }
