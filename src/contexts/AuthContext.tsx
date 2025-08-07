@@ -52,8 +52,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => {
-  // Using the non-null assertion operator '!' to tell TypeScript
-  // that this context will never be null. This is safe because the
-  // entire application is wrapped in AuthProvider.
-  return useContext(AuthContext)!;
+  const context = useContext(AuthContext);
+  if (context === null) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
