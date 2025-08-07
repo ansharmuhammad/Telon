@@ -8,6 +8,7 @@ import { format, isPast, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { getCoverStyle } from '@/lib/utils';
 
 type TrelloCardProps = {
   card: CardType;
@@ -50,7 +51,6 @@ export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
     if (error) {
       showError('Failed to update task status.');
     }
-    // No local state update needed, will be handled by parent component re-render
   };
 
   const dueDate = card.due_date ? new Date(card.due_date) : null;
@@ -70,18 +70,37 @@ export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
     </span>
   );
 
+  const { style: coverStyle, isDark } = getCoverStyle(card.cover_config);
+  const hasFullCover = card.cover_config?.size === 'full';
+
   return (
     <Card
       ref={ref}
       onClick={() => onCardClick(card)}
       className={cn(
-        'bg-white cursor-pointer hover:bg-gray-50 relative',
+        'bg-white cursor-pointer hover:bg-gray-50 relative group',
         isDragging && 'opacity-50',
-        card.is_completed && 'bg-gray-50'
+        card.is_completed && !hasFullCover && 'bg-gray-50',
+        hasFullCover && 'bg-transparent border-none shadow-none'
       )}
     >
       {isDraggedOver && <div className="absolute inset-0 bg-blue-200 opacity-50 rounded-md z-10" />}
-      <CardContent className="p-3">
+      
+      {card.cover_config && (
+        <div
+          style={coverStyle}
+          className={cn(
+            'bg-cover bg-center',
+            hasFullCover ? 'h-28 rounded-md flex items-end p-3' : 'h-8 rounded-t-md'
+          )}
+        >
+          {hasFullCover && (
+            <p className={cn("font-semibold break-words", isDark ? 'text-white' : 'text-gray-900')}>{card.content}</p>
+          )}
+        </div>
+      )}
+
+      <div className={cn(hasFullCover ? 'hidden' : 'p-3')}>
         {card.labels && card.labels.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {card.labels.map(label => (
@@ -110,7 +129,7 @@ export const TrelloCard = ({ card, onCardClick }: TrelloCardProps) => {
           )}
           {dueDateBadge}
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
+import { Card as CardType, List as ListType, Label as LabelType, CoverConfig } from '@/types/trello';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { CalendarIcon, Trash2, Link2 } from 'lucide-react';
+import { CalendarIcon, Trash2, Link2, Image as CoverIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LabelPopover } from './LabelPopover';
 import { RelatedCardsPopover } from './RelatedCardsPopover';
+import { CoverPopover } from './CoverPopover';
 
 const formSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -102,6 +103,10 @@ export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, o
     await onDeleteCard(card.id);
     setIsDeleteAlertOpen(false);
     onOpenChange(false);
+  };
+
+  const handleCoverChange = (coverConfig: CoverConfig) => {
+    onUpdateCard(card.id, { cover_config: coverConfig });
   };
 
   return (
@@ -208,6 +213,11 @@ export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, o
               </div>
               <div className="space-y-2">
                 <h3 className="text-sm font-medium mb-2">Add to card</h3>
+                <CoverPopover card={card} onCoverChange={handleCoverChange}>
+                  <Button type="button" variant="secondary" className="w-full justify-start">
+                    <CoverIcon className="mr-2 h-4 w-4" /> Cover
+                  </Button>
+                </CoverPopover>
                 <LabelPopover 
                   card={card}
                   boardLabels={boardLabels}

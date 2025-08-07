@@ -44,6 +44,7 @@ const BoardPage = () => {
           id, title, position, board_id,
           cards (
             *,
+            cover_config,
             card_labels ( labels (*) ),
             relations_as_card1:card_relations!card1_id(card2_id, card2:cards!card2_id(id, content, list:lists(title))),
             relations_as_card2:card_relations!card2_id(card1_id, card1:cards!card1_id(id, content, list:lists(title)))

@@ -31,6 +31,11 @@ export type BackgroundConfigCustomImage = {
 
 export type BackgroundConfig = BackgroundConfigImage | BackgroundConfigColor | BackgroundConfigCustomImage | null;
 
+export type CoverConfigImage = BackgroundConfigImage & { size: 'full' | 'header' };
+export type CoverConfigColor = BackgroundConfigColor & { size: 'full' | 'header' };
+export type CoverConfigCustomImage = BackgroundConfigCustomImage & { size: 'full' | 'header' };
+export type CoverConfig = CoverConfigImage | CoverConfigColor | CoverConfigCustomImage | null;
+
 export type Card = {
   id: string;
   content: string;
@@ -40,6 +45,7 @@ export type Card = {
   position: number;
   list_id: string;
   is_completed: boolean;
+  cover_config: CoverConfig;
   labels: Label[];
   related_cards: RelatedCardInfo[];
 };
