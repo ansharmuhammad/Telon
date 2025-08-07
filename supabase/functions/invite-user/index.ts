@@ -1,5 +1,3 @@
-/// <reference types="https://esm.sh/@supabase/functions-js@2.4.1/src/edge-runtime.d.ts" />
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -47,70 +45,54 @@ serve(async (req) => {
         throw new Error("Only board admins can invite new members.")
     }
 
-    // Check if user exists in auth.users
-    const { data: { user: existingUser } } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    // The inviteUserByEmail method handles both new and existing users.
+    // It returns the user object and sends an invitation email.
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
 
-    let invitedUserId: string;
-    let message: string;
-
-    if (existingUser) {
-      // User exists
-      invitedUserId = existingUser.id;
-      
-      if (invitedUserId === inviterUser.id) {
-        throw new Error("You cannot invite yourself.")
-      }
-
-      // Check if they are already a member
-      const { data: existingMember } = await supabaseAdmin
-        .from('board_members')
-        .select('user_id')
-        .eq('board_id', board_id)
-        .eq('user_id', invitedUserId)
-        .maybeSingle()
-
-      if (existingMember) {
-        throw new Error("User is already a member of this board.")
-      }
-
-      // Add to board_members
-      const { error: insertError } = await supabaseAdmin
-        .from('board_members')
-        .insert({ board_id, user_id: invitedUserId, role: 'member' })
-
-      if (insertError) throw insertError;
-      
-      message = "User added to board successfully."
-
-    } else {
-      // User does not exist, send an invite
-      // The redirectTo URL should be configured in your Supabase project's Auth settings.
-      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
-
-      if (inviteError) {
-        console.error("Invite error:", inviteError)
-        throw new Error(`Failed to invite user: ${inviteError.message}`)
-      }
-      
-      if (!inviteData || !inviteData.user) {
-        throw new Error("Could not create invitation for user.")
-      }
-
-      invitedUserId = inviteData.user.id
-
-      // Add the new (unconfirmed) user to the board_members table
-      const { error: insertError } = await supabaseAdmin
-        .from('board_members')
-        .insert({ board_id, user_id: invitedUserId, role: 'member' })
-
-      if (insertError) {
-        // If insert fails, we should probably delete the invited user to allow retry
-        await supabaseAdmin.auth.admin.deleteUser(invitedUserId)
-        throw insertError
-      }
-      
-      message = "Invitation email sent successfully."
+    if (inviteError) {
+      // This can happen for various reasons, e.g., if the email provider is down.
+      console.error("Invite error:", inviteError);
+      throw new Error(`Failed to process invitation: ${inviteError.message}`);
     }
+
+    if (!inviteData || !inviteData.user) {
+      throw new Error("Could not retrieve user data after sending invitation.");
+    }
+
+    const invitedUserId = inviteData.user.id;
+
+    if (invitedUserId === inviterUser.id) {
+      throw new Error("You cannot invite yourself.");
+    }
+
+    // Check if they are already a member of this board
+    const { data: existingMember, error: memberCheckError } = await supabaseAdmin
+      .from('board_members')
+      .select('user_id')
+      .eq('board_id', board_id)
+      .eq('user_id', invitedUserId)
+      .maybeSingle();
+
+    if (memberCheckError) {
+      throw new Error(`Database error when checking membership: ${memberCheckError.message}`);
+    }
+
+    if (existingMember) {
+      throw new Error("User is already a member of this board.");
+    }
+
+    // Add the user to the board_members table
+    const { error: insertError } = await supabaseAdmin
+      .from('board_members')
+      .insert({ board_id, user_id: invitedUserId, role: 'member' });
+
+    if (insertError) {
+      // If this fails, the user was invited but not added to the board.
+      // This is a state we might want to handle, but for now, we'll just report the error.
+      throw new Error(`Failed to add user to the board: ${insertError.message}`);
+    }
+
+    const message = "Invitation processed. An email has been sent to the user.";
 
     return new Response(JSON.stringify({ message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

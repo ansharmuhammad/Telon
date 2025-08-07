@@ -1,5 +1,3 @@
-/// <reference types="https://esm.sh/@supabase/functions-js@2.4.1/src/edge-runtime.d.ts" />
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 
 const corsHeaders = {
