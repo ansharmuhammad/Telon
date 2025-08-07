@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Card as CardType } from '@/types/trello';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { AlignLeft, CalendarDays, CheckSquare } from 'lucide-react';
@@ -95,17 +95,34 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
     >
       {isDraggedOver && <div className="absolute inset-0 bg-blue-200 opacity-50 rounded-md z-10" />}
       
-      {card.cover_config && (
+      {card.cover_config && !hasFullCover && (
         <div
           style={coverStyle}
-          className={cn(
-            'bg-cover bg-center',
-            hasFullCover ? 'h-28 rounded-md flex items-end p-3' : 'h-8 rounded-t-md'
-          )}
+          className="h-8 rounded-t-md bg-cover bg-center"
+        />
+      )}
+
+      {hasFullCover && (
+        <div
+          style={coverStyle}
+          className="h-28 rounded-md flex items-end p-3 bg-cover bg-center relative"
         >
-          {hasFullCover && (
-            <p className={cn("font-semibold break-words", isDark ? 'text-white' : 'text-gray-900')}>{card.content}</p>
-          )}
+          <p className={cn("font-semibold break-words relative z-10", isDark ? 'text-white' : 'text-gray-900')}>{card.content}</p>
+          
+          <div className={cn(
+            "absolute inset-0 rounded-md transition-colors",
+            card.is_completed ? "bg-black/50" : "bg-black/20 opacity-0 group-hover:opacity-100"
+          )} />
+          <Checkbox
+            id={`card-check-cover-${card.id}`}
+            checked={card.is_completed}
+            onCheckedChange={(checked) => handleCheck(Boolean(checked))}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "absolute top-2 right-2 z-20 border-white/50 text-white data-[state=checked]:bg-green-500 data-[state=checked]:border-green-600",
+              !card.is_completed && "opacity-0 group-hover:opacity-100"
+            )}
+          />
         </div>
       )}
 
