@@ -87,7 +87,10 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
               />
             </div>
           </div>
-          <Button size="sm" className="w-full mt-2" onClick={() => setIsOpen(false)}>Done</Button>
+          <div className="flex items-center gap-2 mt-2">
+            <Button size="sm" className="w-full" onClick={() => setIsOpen(false)}>Done</Button>
+            <Button size="sm" variant="ghost" className="w-full" onClick={() => { setDate(null); setIsOpen(false); }}>Clear</Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

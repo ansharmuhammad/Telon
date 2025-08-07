@@ -200,7 +200,22 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
 
                   {showDates && (
                     <div>
-                      <h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Dates</h3>
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Dates</h3>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-auto py-1 px-2"
+                          onClick={() => {
+                            form.setValue('start_date', null);
+                            form.setValue('due_date', null);
+                            setShowDates(false);
+                          }}
+                        >
+                          Remove dates
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 gap-4">
                         <FormField
                           control={form.control}
