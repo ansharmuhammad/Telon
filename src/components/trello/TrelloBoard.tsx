@@ -393,17 +393,21 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
   const handleAddAttachment = async (cardId: string, file: File) => {
     if (!session?.user) return;
-    const filePath = `${session.user.id}/${cardId}/${Date.now()}_${file.name}`;
+    
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${session.user.id}/${cardId}/${Date.now()}_${cleanFileName}`;
     
     const { error: uploadError } = await supabase.storage.from('card-attachments').upload(filePath, file);
     if (uploadError) {
-      showError('Failed to upload attachment. Make sure the `card-attachments` bucket exists in Supabase Storage.');
+      console.error("Upload error:", uploadError);
+      showError(`Upload failed: ${uploadError.message}`);
       return;
     }
 
     const { data: newAttachment, error: dbError } = await supabase.from('card_attachments').insert({ card_id: cardId, file_path: filePath, file_name: file.name, file_type: file.type }).select().single();
     if (dbError) {
       showError('Failed to save attachment details.');
+      await supabase.storage.from('card-attachments').remove([filePath]);
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, attachments: [...c.attachments, newAttachment] } : c) })) }));
       showSuccess('Attachment added!');
