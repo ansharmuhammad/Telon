@@ -57,7 +57,7 @@ export const GlobalSearch = () => {
                 setIsOpen(true);
               }
             }}
-            className="pl-9"
+            className="pl-9 bg-gray-700/50 text-white border-gray-600 placeholder:text-gray-400"
           />
           {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
         </div>
@@ -73,7 +73,7 @@ export const GlobalSearch = () => {
             {results.map((r) => (
               <Link
                 key={r.card_id}
-                to={`/board/${r.board_id}`}
+                to={`/board/${r.board_id}?cardId=${r.card_id}`}
                 onClick={() => {
                   setQuery('');
                   setIsOpen(false);

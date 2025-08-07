@@ -9,11 +9,12 @@ import { showError, showSuccess } from '@/utils/toast';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;
+  modalCardId: string | null;
+  onModalOpenChange: (isOpen: boolean, cardId?: string) => void;
 };
 
-const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
+const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
-  const [modalCardId, setModalCardId] = useState<string | null>(null);
 
   const allCards = useMemo(() => board.lists.flatMap(l => l.cards), [board.lists]);
   const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
@@ -333,7 +334,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
             list={list}
             lists={board.lists.sort((a, b) => a.position - b.position)}
             boardLabels={board.labels}
-            onCardClick={(card) => setModalCardId(card.id)}
+            onCardClick={(card) => onModalOpenChange(true, card.id)}
             onAddCard={handleAddCard}
             onUpdateList={handleUpdateList}
             onDeleteList={handleDeleteList}
@@ -346,7 +347,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
         <CardDetailsModal
           key={modalCard.id}
           isOpen={!!modalCardId}
-          onOpenChange={() => setModalCardId(null)}
+          onOpenChange={(isOpen) => onModalOpenChange(isOpen)}
           card={modalCard}
           allCards={allCards}
           lists={board.lists}
@@ -359,7 +360,7 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
           onUpdateLabel={handleUpdateLabel}
           onAddRelation={handleAddRelation}
           onRemoveRelation={handleRemoveRelation}
-          onSelectCard={(cardId) => setModalCardId(cardId)}
+          onSelectCard={(cardId) => onModalOpenChange(true, cardId)}
         />
       )}
     </div>

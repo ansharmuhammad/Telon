@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Board as BoardType, BackgroundConfig } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,8 +24,10 @@ const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
   const { session } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [board, setBoard] = useState<BoardType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modalCardId, setModalCardId] = useState<string | null>(null);
 
   const getBoardData = useCallback(async () => {
     if (!session?.user || !boardId) return;
@@ -80,13 +82,29 @@ const BoardPage = () => {
     };
     setBoard(boardWithMappedData);
     setLoading(false);
-  }, [session, boardId, navigate]);
+
+    const cardIdFromUrl = searchParams.get('cardId');
+    if (cardIdFromUrl) {
+      setModalCardId(cardIdFromUrl);
+    }
+  }, [session, boardId, navigate, searchParams]);
 
   useEffect(() => {
     if (session) {
       getBoardData();
     }
   }, [session, getBoardData]);
+
+  const handleModalOpenChange = (isOpen: boolean, cardId?: string) => {
+    if (isOpen && cardId) {
+      setModalCardId(cardId);
+    } else {
+      setModalCardId(null);
+      // Clean up URL
+      searchParams.delete('cardId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   const handleBackgroundChange = async (newConfig: BackgroundConfig) => {
     if (!board) return;
@@ -227,7 +245,11 @@ const BoardPage = () => {
     >
       <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} onBoardNameChange={handleBoardNameChange} />
       <main className="flex-grow p-4 md:p-6 overflow-hidden">
-        <TrelloBoard initialBoard={board} />
+        <TrelloBoard 
+          initialBoard={board} 
+          modalCardId={modalCardId}
+          onModalOpenChange={handleModalOpenChange}
+        />
       </main>
     </div>
   );
