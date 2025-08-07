@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { InviteUserPopover } from './InviteUserPopover';
 
 type HeaderProps = {
   board: Board | null;
@@ -80,6 +81,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
       </div>
       <div className="flex items-center gap-2">
         <GlobalSearch />
+        {board && <InviteUserPopover boardId={board.id} />}
         {board && (
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
