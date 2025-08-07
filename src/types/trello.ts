@@ -61,6 +61,15 @@ export type Checklist = {
   items: ChecklistItem[];
 };
 
+export type Attachment = {
+  id: string;
+  card_id: string;
+  file_path: string;
+  file_name: string;
+  file_type: string | null;
+  created_at: string;
+};
+
 export type Card = {
   id: string;
   content: string;
@@ -74,6 +83,7 @@ export type Card = {
   labels: Label[];
   related_cards: RelatedCardInfo[];
   checklists: Checklist[];
+  attachments: Attachment[];
 };
 
 export type List = {

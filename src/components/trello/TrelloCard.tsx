@@ -3,7 +3,7 @@ import { Card as CardType } from '@/types/trello';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { AlignLeft, CalendarDays, CheckSquare } from 'lucide-react';
+import { AlignLeft, CalendarDays, CheckSquare, Paperclip } from 'lucide-react';
 import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
@@ -152,6 +152,12 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-2 pl-6">
           {card.description && (
             <AlignLeft className="h-4 w-4" />
+          )}
+          {card.attachments && card.attachments.length > 0 && (
+            <span className="flex items-center gap-1">
+              <Paperclip className="h-4 w-4" />
+              <span>{card.attachments.length}</span>
+            </span>
           )}
           {dueDateBadge}
           {checklistBadge}

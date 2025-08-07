@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, Checklist, ChecklistItem } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, Checklist, ChecklistItem, Attachment } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
 import { CardDetailsModal } from './CardDetailsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { showError, showSuccess } from '@/utils/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;
@@ -15,6 +16,7 @@ type TrelloBoardProps = {
 
 const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
+  const { session } = useAuth();
 
   const allCards = useMemo(() => board.lists.flatMap(l => l.cards), [board.lists]);
   const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
@@ -161,7 +163,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: []}].sort((a, b) => a.position - b.position) } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: [], attachments: []}].sort((a, b) => a.position - b.position) } : l) }));
       showSuccess('Card added!');
     }
   };
@@ -389,6 +391,54 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     }
   };
 
+  const handleAddAttachment = async (cardId: string, file: File) => {
+    if (!session?.user) return;
+    const filePath = `${session.user.id}/${cardId}/${Date.now()}_${file.name}`;
+    
+    const { error: uploadError } = await supabase.storage.from('card-attachments').upload(filePath, file);
+    if (uploadError) {
+      showError('Failed to upload attachment. Make sure the `card-attachments` bucket exists in Supabase Storage.');
+      return;
+    }
+
+    const { data: newAttachment, error: dbError } = await supabase.from('card_attachments').insert({ card_id: cardId, file_path: filePath, file_name: file.name, file_type: file.type }).select().single();
+    if (dbError) {
+      showError('Failed to save attachment details.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, attachments: [...c.attachments, newAttachment] } : c) })) }));
+      showSuccess('Attachment added!');
+    }
+  };
+
+  const handleUpdateAttachment = async (attachmentId: string, data: { file_name: string }) => {
+    const { error } = await supabase.from('card_attachments').update(data).eq('id', attachmentId);
+    if (error) {
+      showError('Failed to update attachment.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, attachments: c.attachments.map(a => a.id === attachmentId ? { ...a, ...data } : a) })) })) }));
+      showSuccess('Attachment renamed!');
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    const attachment = allCards.flatMap(c => c.attachments).find(a => a.id === attachmentId);
+    if (!attachment) return;
+
+    const { error: storageError } = await supabase.storage.from('card-attachments').remove([attachment.file_path]);
+    if (storageError) {
+      showError('Failed to delete file from storage.');
+      return;
+    }
+
+    const { error: dbError } = await supabase.from('card_attachments').delete().eq('id', attachmentId);
+    if (dbError) {
+      showError('Failed to delete attachment record.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, attachments: c.attachments.filter(a => a.id !== attachmentId) })) })) }));
+      showSuccess('Attachment deleted.');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
@@ -432,6 +482,9 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
           onAddChecklistItem={handleAddChecklistItem}
           onUpdateChecklistItem={handleUpdateChecklistItem}
           onDeleteChecklistItem={handleDeleteChecklistItem}
+          onAddAttachment={handleAddAttachment}
+          onUpdateAttachment={handleUpdateAttachment}
+          onDeleteAttachment={handleDeleteAttachment}
         />
       )}
     </div>

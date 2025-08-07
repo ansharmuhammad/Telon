@@ -54,7 +54,8 @@ const BoardPage = () => {
             checklists (
               *,
               items:checklist_items(*)
-            )
+            ),
+            attachments:card_attachments(*)
           )
         )
       `)
@@ -91,7 +92,8 @@ const BoardPage = () => {
             ...card, 
             labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), 
             related_cards: [...related_as_1, ...related_as_2],
-            checklists: checklists
+            checklists: checklists,
+            attachments: card.attachments || []
           }
         }).sort((a, b) => a.position - b.position)
       })).sort((a, b) => a.position - b.position)
