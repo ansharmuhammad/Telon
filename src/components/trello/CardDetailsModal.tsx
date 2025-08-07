@@ -114,7 +114,7 @@ export const CardDetailsModal = ({ card, allCards, lists, boardLabels, isOpen, o
       <DialogContent className="sm:max-w-[625px]">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <DialogHeader>
+            <DialogHeader className="pr-8">
               <FormField
                 control={form.control}
                 name="content"

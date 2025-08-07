@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
 
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
@@ -251,6 +252,7 @@ const BoardPage = () => {
           onModalOpenChange={handleModalOpenChange}
         />
       </main>
+      <SwitchBoardButton />
     </div>
   );
 };
