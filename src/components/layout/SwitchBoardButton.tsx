@@ -36,7 +36,6 @@ export const SwitchBoardButton = () => {
       supabase
         .from('boards')
         .select('id, name, background_config')
-        .eq('user_id', session.user.id)
         .eq('is_closed', false)
         .order('created_at', { ascending: false })
         .then(({ data, error }) => {

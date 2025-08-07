@@ -33,7 +33,6 @@ const BoardPage = () => {
   const getBoardData = useCallback(async () => {
     if (!session?.user || !boardId) return;
     
-    // Keep loading state true only on initial fetch
     if (!board) setLoading(true);
 
     const { data: fullBoardData, error } = await supabase
@@ -66,12 +65,6 @@ const BoardPage = () => {
 
     if (error || !fullBoardData) {
       showError('Could not load board or you do not have access.');
-      navigate('/dashboard');
-      return;
-    }
-    
-    if (fullBoardData.user_id !== session.user.id) {
-      showError('You do not have permission to view this board.');
       navigate('/dashboard');
       return;
     }
@@ -192,7 +185,6 @@ const BoardPage = () => {
       showError('Failed to re-open board.');
     } else {
       showSuccess('Board re-opened!');
-      // We need to refetch data here
       window.location.reload();
     }
   };

@@ -39,10 +39,10 @@ const Dashboard = () => {
   const fetchBoards = useCallback(async () => {
     if (!session?.user) return;
     setLoading(true);
+    // RLS policy handles filtering, so we don't need to filter by user_id here.
     const { data, error } = await supabase
       .from('boards')
       .select('id, name, background_config, is_closed')
-      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
