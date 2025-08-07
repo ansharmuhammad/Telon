@@ -25,7 +25,6 @@ export const GlobalSearch = () => {
   useEffect(() => {
     if (debouncedQuery.length > 2) {
       setLoading(true);
-      setIsOpen(true);
       supabase
         .rpc('search_cards', { search_text: debouncedQuery })
         .then(({ data, error }) => {
@@ -36,6 +35,7 @@ export const GlobalSearch = () => {
             setResults(data || []);
           }
           setLoading(false);
+          setIsOpen(true); // Open after search
         });
     } else {
       setResults([]);
@@ -52,12 +52,21 @@ export const GlobalSearch = () => {
             placeholder="Search cards..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              if (query.length > 2) {
+                setIsOpen(true);
+              }
+            }}
             className="pl-9"
           />
           {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="start">
+      <PopoverContent 
+        className="w-64 p-2" 
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         {results.length > 0 ? (
           <div className="space-y-1">
             <p className="text-xs font-semibold text-muted-foreground px-2">CARDS</p>
