@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
 import { TrelloCard } from './TrelloCard';
 import { AddCardForm } from './AddCardForm';
@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +31,7 @@ type TrelloListProps = {
   lists: ListType[];
   boardLabels: LabelType[];
   onCardClick: (card: CardType) => void;
-  onAddCard: (listId: string, content: string) => Promise<void>;
+  onAddCard: (listId: string, content: string, afterPosition?: number) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
@@ -44,6 +44,7 @@ export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, o
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(list.title);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showInlineAddForm, setShowInlineAddForm] = useState<number | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -114,13 +115,38 @@ export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, o
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2 p-1 pt-0 min-h-[2rem]">
-          {list.cards.map(card => (
-            <TrelloCard
-              key={card.id}
-              card={card}
-              onCardClick={onCardClick}
-            />
+        <CardContent className="flex flex-col gap-0 p-1 pt-0 min-h-[2rem]">
+          {list.cards.map((card, index) => (
+            <div key={card.id} className="group/item">
+              <TrelloCard
+                card={card}
+                onCardClick={onCardClick}
+              />
+              {showInlineAddForm === index ? (
+                <div className="py-1">
+                  <AddCardForm
+                    listId={list.id}
+                    onAddCard={async (listId, content) => {
+                      await onAddCard(listId, content, card.position);
+                      setShowInlineAddForm(null);
+                    }}
+                    forceShow={true}
+                    onCancel={() => setShowInlineAddForm(null)}
+                  />
+                </div>
+              ) : (
+                <div 
+                  className="h-8 -my-1 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer"
+                  onClick={() => setShowInlineAddForm(index)}
+                >
+                  <div className="w-full border-t-2 border-dashed border-gray-400 relative">
+                    <div className="absolute bg-gray-100 px-1 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                      <Plus className="h-4 w-4 text-gray-600" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </CardContent>
         <div className="p-1 pt-0">

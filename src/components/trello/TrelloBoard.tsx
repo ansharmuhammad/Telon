@@ -130,15 +130,31 @@ const TrelloBoard = ({ initialBoard }: TrelloBoardProps) => {
     }
   };
 
-  const handleAddCard = async (listId: string, content: string) => {
+  const handleAddCard = async (listId: string, content: string, afterPosition?: number) => {
     const list = board.lists.find(l => l.id === listId);
     if (!list) return;
-    const newPosition = list.cards.length > 0 ? Math.max(...list.cards.map(c => c.position)) + 1 : 1;
+
+    let newPosition: number;
+
+    if (afterPosition !== undefined) {
+      const sortedCards = [...list.cards].sort((a, b) => a.position - b.position);
+      const afterIndex = sortedCards.findIndex(c => c.position === afterPosition);
+      
+      const cardBefore = sortedCards[afterIndex];
+      const cardAfter = sortedCards[afterIndex + 1];
+
+      const posBefore = cardBefore ? cardBefore.position : 0;
+      const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
+      newPosition = (posBefore + posAfter) / 2;
+    } else {
+      newPosition = list.cards.length > 0 ? Math.max(...list.cards.map(c => c.position)) + 1 : 1;
+    }
+
     const { data: newCard, error } = await supabase.from('cards').insert({ list_id: listId, content, position: newPosition, is_completed: false }).select('*').single();
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: []}] } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: []}].sort((a, b) => a.position - b.position) } : l) }));
       showSuccess('Card added!');
     }
   };
