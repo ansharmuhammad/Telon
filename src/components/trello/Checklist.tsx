@@ -51,8 +51,8 @@ const ChecklistItem = ({ item, onUpdate, onDelete }: ChecklistItemProps) => {
             className="mb-2"
           />
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleUpdateContent}>Save</Button>
-            <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+            <Button type="button" size="sm" onClick={handleUpdateContent}>Save</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
           </div>
         </div>
       ) : (
@@ -63,7 +63,7 @@ const ChecklistItem = ({ item, onUpdate, onDelete }: ChecklistItemProps) => {
           {item.content}
         </p>
       )}
-      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => onDelete(item.id)}>
+      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => onDelete(item.id)}>
         <X className="h-4 w-4" />
       </Button>
     </div>
@@ -123,11 +123,11 @@ export const Checklist = ({
           )}
         </div>
         {totalItems > 0 && (
-          <Button variant="secondary" size="sm" onClick={() => setHideCompleted(!hideCompleted)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setHideCompleted(!hideCompleted)}>
             {hideCompleted ? `Show (${completedItems})` : 'Hide'} checked
           </Button>
         )}
-        <Button variant="secondary" size="sm" onClick={() => onDeleteChecklist(checklist.id)}>Delete</Button>
+        <Button type="button" variant="secondary" size="sm" onClick={() => onDeleteChecklist(checklist.id)}>Delete</Button>
       </div>
       {totalItems > 0 && (
         <div className="flex items-center gap-2 pl-9">
@@ -157,12 +157,12 @@ export const Checklist = ({
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddItem(); } }}
             />
             <div className="flex items-center gap-2">
-              <Button onClick={handleAddItem}>Add</Button>
-              <Button variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
+              <Button type="button" onClick={handleAddItem}>Add</Button>
+              <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
             </div>
           </div>
         ) : (
-          <Button variant="secondary" onClick={() => setIsAddingItem(true)}>Add an item</Button>
+          <Button type="button" variant="secondary" onClick={() => setIsAddingItem(true)}>Add an item</Button>
         )}
       </div>
     </div>
