@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter } from '@/components/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Trash2, Link2, Image as CoverIcon } from 'lucide-react';
 import { cn, getCoverStyle } from '@/lib/utils';
 import { LabelPopover } from './LabelPopover';
@@ -124,9 +125,9 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
   const isDueSoon = dueDate && !isCompleted && !isPast(dueDate) && differenceInHours(dueDate, new Date()) < 24;
 
   const getStatus = () => {
-    if (isCompleted) return { text: 'Complete', color: 'bg-green-100 text-green-800', selectColor: 'bg-green-500 hover:bg-green-600 text-white' };
-    if (isOverdue) return { text: 'Overdue', color: 'bg-red-100 text-red-800', selectColor: 'bg-red-500 hover:bg-red-600 text-white' };
-    if (isDueSoon) return { text: 'Due soon', color: 'bg-yellow-100 text-yellow-800', selectColor: 'bg-yellow-500 hover:bg-yellow-600 text-white' };
+    if (isCompleted) return { text: 'Complete', color: 'bg-green-100 text-green-800' };
+    if (isOverdue) return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
+    if (isDueSoon) return { text: 'Due soon', color: 'bg-yellow-100 text-yellow-800' };
     return null;
   };
   const status = getStatus();
@@ -141,21 +142,31 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <DialogHeader className="pr-8">
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input {...field} className="text-lg font-bold border-none shadow-none -ml-2" />
-                      </FormControl>
-                      {form.formState.errors.content && (
-                        <p className="text-sm text-destructive ml-2">{form.formState.errors.content.message}</p>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="card-completed-checkbox"
+                    checked={card.is_completed}
+                    onCheckedChange={(checked) => onUpdateCard(card.id, { is_completed: !!checked })}
+                    className="mt-2 h-5 w-5"
+                  />
+                  <div className="flex-grow">
+                    <FormField
+                      control={form.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input {...field} className={cn("text-lg font-bold border-none shadow-none -ml-2", card.is_completed && "line-through text-muted-foreground")} />
+                          </FormControl>
+                          {form.formState.errors.content && (
+                            <p className="text-sm text-destructive ml-2">{form.formState.errors.content.message}</p>
+                          )}
+                        </FormItem>
                       )}
-                    </FormItem>
-                  )}
-                />
-                <div className="text-sm text-muted-foreground pl-2">
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground pl-10">
                   in list <span className="font-medium text-foreground">{lists.find(l => l.id === card.list_id)?.title}</span>
                 </div>
               </DialogHeader>
@@ -212,18 +223,9 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                                   <DateTimePicker date={field.value} setDate={field.onChange} />
                                 </div>
                                 {status && (
-                                  <Select
-                                    value={card.is_completed ? 'complete' : 'incomplete'}
-                                    onValueChange={(value) => onUpdateCard(card.id, { is_completed: value === 'complete' })}
-                                  >
-                                    <SelectTrigger className={cn("w-[120px]", status.selectColor)}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="incomplete">Incomplete</SelectItem>
-                                      <SelectItem value="complete">Complete</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                  <span className={cn("px-3 py-1 rounded-md text-xs font-medium", status.color)}>
+                                    {status.text}
+                                  </span>
                                 )}
                               </div>
                               {form.formState.errors.due_date && (<p className="text-sm text-destructive mt-1">{form.formState.errors.due_date.message}</p>)}
