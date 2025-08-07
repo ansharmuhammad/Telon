@@ -8,6 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { showError, showSuccess } from '@/utils/toast';
 import { getBackgroundStyle } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
@@ -26,6 +37,7 @@ const BoardPage = () => {
         id, 
         name, 
         background_config,
+        is_closed,
         user_id,
         labels (*),
         lists (
@@ -55,6 +67,7 @@ const BoardPage = () => {
 
     const boardWithMappedData: BoardType = {
       ...fullBoardData,
+      is_closed: fullBoardData.is_closed,
       lists: fullBoardData.lists.map(list => ({
         ...list,
         cards: list.cards.map((card: any) => {
@@ -92,6 +105,51 @@ const BoardPage = () => {
     }
   };
 
+  const handleCloseBoard = async () => {
+    if (!board) return;
+    const { error } = await supabase
+      .from('boards')
+      .update({ is_closed: true })
+      .eq('id', board.id);
+
+    if (error) {
+      showError('Failed to close board.');
+    } else {
+      showSuccess('Board closed.');
+      navigate('/dashboard');
+    }
+  };
+
+  const handleReopenBoard = async () => {
+    if (!board) return;
+    const { error } = await supabase
+      .from('boards')
+      .update({ is_closed: false })
+      .eq('id', board.id);
+
+    if (error) {
+      showError('Failed to re-open board.');
+    } else {
+      showSuccess('Board re-opened!');
+      getBoardData();
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!board) return;
+    const { error } = await supabase
+      .from('boards')
+      .delete()
+      .eq('id', board.id);
+
+    if (error) {
+      showError('Failed to delete board.');
+    } else {
+      showSuccess('Board permanently deleted.');
+      navigate('/dashboard');
+    }
+  };
+
   const backgroundStyle = board ? getBackgroundStyle(board.background_config) : {};
 
   if (loading) {
@@ -109,12 +167,46 @@ const BoardPage = () => {
     );
   }
 
+  if (board.is_closed) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-gray-100">
+        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md w-full">
+          <h1 className="text-2xl font-bold mb-2">Board is closed</h1>
+          <p className="text-muted-foreground mb-6">
+            To view this board, you'll need to re-open it.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button onClick={handleReopenBoard}>Re-open Board</Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">Delete Permanently</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the board and all of its data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteBoard} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="h-screen flex flex-col bg-gray-50 bg-cover bg-center"
       style={backgroundStyle}
     >
-      <Header board={board} onBackgroundChange={handleBackgroundChange} />
+      <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} />
       <main className="flex-grow p-4 md:p-6 overflow-hidden">
         <TrelloBoard initialBoard={board} />
       </main>

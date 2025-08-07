@@ -56,6 +56,7 @@ export type Board = {
   id: string;
   name: string;
   background_config: BackgroundConfig;
+  is_closed: boolean;
   lists: List[];
   labels: Label[];
 };
