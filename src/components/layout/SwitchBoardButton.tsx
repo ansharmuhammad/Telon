@@ -64,7 +64,7 @@ export const SwitchBoardButton = () => {
       <DialogTrigger asChild>
         <Button
           variant="secondary"
-          className="fixed bottom-6 right-6 rounded-full shadow-lg h-12 px-4"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full shadow-lg h-12 px-4"
         >
           <Replace className="mr-2 h-5 w-5" />
           Switch Boards
