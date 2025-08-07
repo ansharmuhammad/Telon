@@ -22,14 +22,6 @@ export const InviteUserPopover = ({ boardId }: InviteUserPopoverProps) => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('invite-user', {
-        body: { board_id: boardId, email: email.trim() },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      
       const { data: functionData, error: functionError } = await supabase.functions.invoke('invite-user', {
         body: { board_id: boardId, email: email.trim() },
       });
