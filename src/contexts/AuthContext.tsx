@@ -32,7 +32,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!loading) {
       const isAuthPage = location.pathname === '/login';
-      if (!session && !isAuthPage) {
+      const isPublicPath = isAuthPage || location.pathname.startsWith('/board/');
+      
+      if (!session && !isPublicPath) {
         navigate('/login');
       } else if (session && isAuthPage) {
         navigate('/dashboard');
