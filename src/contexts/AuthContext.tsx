@@ -51,10 +51,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === null) {
-    // This check ensures that the hook is used within an AuthProvider.
+    // This check ensures that the hook is used within an AuthProvider,
+    // which is a best practice for creating custom hooks with context.
     // It also narrows the type, so TypeScript knows the return value is not null.
     throw new Error('useAuth must be used within an AuthProvider');
   }
