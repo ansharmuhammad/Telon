@@ -8,7 +8,10 @@ type AuthContextType = {
   supabase: SupabaseClient;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  supabase: supabase,
+});
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -52,12 +55,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === null) {
-    // This check ensures that the hook is used within an AuthProvider,
-    // which is a best practice for creating custom hooks with context.
-    // It also narrows the type, so TypeScript knows the return value is not null.
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
