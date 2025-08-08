@@ -208,7 +208,7 @@ export const ChangeBackgroundButton = ({ boardId, onBackgroundChange }: ChangeBa
           <h3 className="text-sm font-medium mb-2 text-center">Custom</h3>
           {fetchingCustom ? <Skeleton className="h-20 w-full" /> : (
             <div className="grid grid-cols-3 gap-2 mb-4 max-h-48 overflow-y-auto">
-              {customImages.map(image => (
+              {session?.user && customImages.map(image => (
                 <div key={image.id} className="relative group">
                   <button onClick={() => handleSelectCustomImage(image.name)} className="w-full">
                     <img 

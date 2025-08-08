@@ -193,7 +193,7 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
               <div className="space-y-4">
                 {fetchingAttachments ? <Skeleton className="h-20 w-full" /> : (
                   <div className="grid grid-cols-2 gap-2 h-40 overflow-y-auto">
-                    {attachments.map(image => {
+                    {session?.user && attachments.map(image => {
                       const imagePath = `${session.user.id}/${card.id}/${image.name}`;
                       return (
                         <div key={image.id} className="relative group">
