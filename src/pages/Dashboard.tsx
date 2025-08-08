@@ -62,12 +62,6 @@ const Dashboard = () => {
     e.preventDefault();
     if (!newBoardName.trim() || !session?.user) return;
 
-    // Forcefully set the session to ensure the auth token is used.
-    await supabase.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-    });
-
     const { data: newBoard, error } = await supabase
       .from('boards')
       .insert({ name: newBoardName.trim(), user_id: session.user.id })
