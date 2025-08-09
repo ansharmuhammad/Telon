@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { createClient, User } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -45,21 +45,39 @@ serve(async (req) => {
         throw new Error("Only board admins can invite new members.")
     }
 
-    // The inviteUserByEmail method handles both new and existing users.
-    // It returns the user object and sends an invitation email.
+    let invitedUser: Partial<User>;
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
 
     if (inviteError) {
-      // This can happen for various reasons, e.g., if the email provider is down.
-      console.error("Invite error:", inviteError);
-      throw new Error(`Failed to process invitation: ${inviteError.message}`);
+        if (inviteError.message.includes('already been registered')) {
+            // User exists, so we need to get their info from the public users table.
+            const { data: existingUser, error: userFetchError } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('email', email)
+                .single();
+
+            if (userFetchError || !existingUser) {
+                throw new Error('User already exists but could not be found to add to the board.');
+            }
+            invitedUser = { id: existingUser.id };
+        } else {
+            // A different, unexpected error occurred
+            console.error("Invite error:", inviteError);
+            throw new Error(`Failed to process invitation: ${inviteError.message}`);
+        }
+    } else {
+        if (!inviteData || !inviteData.user) {
+            throw new Error("Could not retrieve user data after sending invitation.");
+        }
+        invitedUser = inviteData.user;
     }
 
-    if (!inviteData || !inviteData.user) {
-      throw new Error("Could not retrieve user data after sending invitation.");
-    }
+    const invitedUserId = invitedUser.id;
 
-    const invitedUserId = inviteData.user.id;
+    if (!invitedUserId) {
+      throw new Error("Could not determine the invited user's ID.");
+    }
 
     if (invitedUserId === inviterUser.id) {
       throw new Error("You cannot invite yourself.");
@@ -87,12 +105,10 @@ serve(async (req) => {
       .insert({ board_id, user_id: invitedUserId, role: 'member' });
 
     if (insertError) {
-      // If this fails, the user was invited but not added to the board.
-      // This is a state we might want to handle, but for now, we'll just report the error.
       throw new Error(`Failed to add user to the board: ${insertError.message}`);
     }
 
-    const message = "Invitation processed. An email has been sent to the user.";
+    const message = "Invitation processed successfully.";
 
     return new Response(JSON.stringify({ message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -100,7 +116,8 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "An unknown error occurred";
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
