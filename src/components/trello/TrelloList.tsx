@@ -29,7 +29,6 @@ import { cn } from '@/lib/utils';
 type TrelloListProps = {
   list: ListType;
   lists: ListType[];
-  boardLabels: LabelType[];
   onCardClick: (card: CardType) => void;
   onAddCard: (listId: string, content: string, afterPosition?: number) => Promise<void>;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
@@ -38,7 +37,7 @@ type TrelloListProps = {
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
 
-export const TrelloList = ({ list, lists, boardLabels, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);

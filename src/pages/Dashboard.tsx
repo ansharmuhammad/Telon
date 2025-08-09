@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
+import { Plus, LogOut } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { BackgroundConfig } from '@/types/trello';
 import { getBackgroundThumbnailStyle } from '@/lib/utils';
@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 type BoardSummary = {
   id: string;
@@ -39,7 +40,6 @@ const Dashboard = () => {
   const fetchBoards = useCallback(async () => {
     if (!session?.user) return;
     setLoading(true);
-    // RLS policy handles filtering, so we don't need to filter by user_id here.
     const { data, error } = await supabase
       .from('boards')
       .select('id, name, background_config, is_closed')
@@ -119,7 +119,13 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
-            <Button onClick={() => supabase.auth.signOut()}>Logout</Button>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <Button variant="outline" onClick={() => supabase.auth.signOut()}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>

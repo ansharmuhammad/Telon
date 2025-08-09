@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { InviteUserPopover } from './InviteUserPopover';
+import { NotificationBell } from './NotificationBell';
 
 type HeaderProps = {
   board: Board | null;
@@ -116,6 +117,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        <NotificationBell />
         <Button variant="ghost" onClick={handleLogout} className="hover:bg-gray-700">
           <LogOut className="mr-2 h-4 w-4" />
           Logout

@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "lib": ["deno.ns", "dom"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "deno.ns", "dom", "dom.iterable"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "https://*": ["https://*"]
     }
   },
-  "include": ["./functions/**/*"]
+  "include": ["functions/**/*"]
 }

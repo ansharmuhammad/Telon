@@ -17,13 +17,11 @@ serve(async (req: Request) => {
       throw new Error("Board ID and email are required.")
     }
 
-    // Create admin client to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
     
-    // Create a client to authenticate the user making the request
     const authHeader = req.headers.get('Authorization')!
     const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
@@ -33,7 +31,6 @@ serve(async (req: Request) => {
     const { data: { user: inviterUser } } = await supabase.auth.getUser()
     if (!inviterUser) throw new Error("User not authenticated")
 
-    // Check if the person sending the invite is an admin of the board
     const { data: inviterData, error: inviterError } = await supabaseAdmin
       .from('board_members')
       .select('role')
@@ -50,7 +47,6 @@ serve(async (req: Request) => {
 
     if (inviteError) {
         if (inviteError.message.includes('already been registered')) {
-            // User exists, so we need to get their info from the public users table.
             const { data: existingUser, error: userFetchError } = await supabaseAdmin
                 .from('users')
                 .select('id')
@@ -62,7 +58,6 @@ serve(async (req: Request) => {
             }
             invitedUser = { id: existingUser.id };
         } else {
-            // A different, unexpected error occurred
             console.error("Invite error:", inviteError);
             throw new Error(`Failed to process invitation: ${inviteError.message}`);
         }
@@ -74,16 +69,9 @@ serve(async (req: Request) => {
     }
 
     const invitedUserId = invitedUser.id;
+    if (!invitedUserId) throw new Error("Could not determine the invited user's ID.");
+    if (invitedUserId === inviterUser.id) throw new Error("You cannot invite yourself.");
 
-    if (!invitedUserId) {
-      throw new Error("Could not determine the invited user's ID.");
-    }
-
-    if (invitedUserId === inviterUser.id) {
-      throw new Error("You cannot invite yourself.");
-    }
-
-    // Check if they are already a member of this board
     const { data: existingMember, error: memberCheckError } = await supabaseAdmin
       .from('board_members')
       .select('user_id')
@@ -91,26 +79,37 @@ serve(async (req: Request) => {
       .eq('user_id', invitedUserId)
       .maybeSingle();
 
-    if (memberCheckError) {
-      throw new Error(`Database error when checking membership: ${memberCheckError.message}`);
-    }
+    if (memberCheckError) throw new Error(`Database error when checking membership: ${memberCheckError.message}`);
+    if (existingMember) throw new Error("User is already a member of this board.");
 
-    if (existingMember) {
-      throw new Error("User is already a member of this board.");
-    }
-
-    // Add the user to the board_members table
     const { error: insertError } = await supabaseAdmin
       .from('board_members')
       .insert({ board_id, user_id: invitedUserId, role: 'member' });
 
-    if (insertError) {
-      throw new Error(`Failed to add user to the board: ${insertError.message}`);
+    if (insertError) throw new Error(`Failed to add user to the board: ${insertError.message}`);
+
+    // --- Create Notification ---
+    const { data: boardData, error: boardError } = await supabaseAdmin.from('boards').select('name').eq('id', board_id).single();
+    const { data: inviterProfile, error: inviterProfileError } = await supabaseAdmin.from('users').select('full_name, email').eq('id', inviterUser.id).single();
+
+    if (!boardError && !inviterProfileError) {
+      const { error: notificationError } = await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: invitedUserId,
+          actor_id: inviterUser.id,
+          type: 'BOARD_INVITE',
+          data: {
+            boardId: board_id,
+            boardName: boardData.name,
+            actorName: inviterProfile.full_name || inviterProfile.email || 'Someone'
+          }
+        });
+      if (notificationError) console.error("Failed to create notification:", notificationError);
     }
+    // --- End Notification ---
 
-    const message = "Invitation processed successfully.";
-
-    return new Response(JSON.stringify({ message }), {
+    return new Response(JSON.stringify({ message: "Invitation processed successfully." }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

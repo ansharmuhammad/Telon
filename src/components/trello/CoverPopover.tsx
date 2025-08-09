@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Image as ImageIcon, Search, Plus, Loader2, Check, Trash2 } from 'lucide-react';
+import { Search, Plus, Loader2, Check, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card as CardType, CoverConfig, BackgroundConfig, FileObject } from '@/types/trello';
 import { showError } from '@/utils/toast';
@@ -188,6 +188,7 @@ export const CoverPopover = ({ children, card, onCoverChange }: CoverPopoverProp
                   );
                 })}
               </div>
+              <p className="text-xs text-center text-muted-foreground">Photos by <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline">Unsplash</a></p>
             </TabsContent>
             <TabsContent value="attachments" className="pt-4">
               <div className="space-y-4">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, Checklist, ChecklistItem, Attachment } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, ChecklistItem } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
 import { CardDetailsModal } from './CardDetailsModal';
@@ -451,7 +451,6 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
             key={list.id}
             list={list}
             lists={board.lists.sort((a, b) => a.position - b.position)}
-            boardLabels={board.labels}
             onCardClick={(card) => onModalOpenChange(true, card.id)}
             onAddCard={handleAddCard}
             onUpdateCard={handleUpdateCard}
