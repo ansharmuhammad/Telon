@@ -236,8 +236,8 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                                 <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">{comment.content}</div>
                                 {comment.user_id === session?.user?.id && (
                                   <div className="flex gap-2 mt-1">
-                                    <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setEditingComment(comment); commentForm.setValue('content', comment.content); }}>Edit</Button>
-                                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-destructive" onClick={() => onDeleteComment(comment.id)}>Delete</Button>
+                                    <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setEditingComment(comment); commentForm.setValue('content', comment.content); }}>Edit</Button>
+                                    <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-destructive" onClick={() => onDeleteComment(comment.id)}>Delete</Button>
                                   </div>
                                 )}
                               </div>
