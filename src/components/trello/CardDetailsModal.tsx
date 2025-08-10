@@ -207,128 +207,130 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[625px] p-0">
-          {card.cover_config && <div style={coverStyle} className="h-32 w-full rounded-t-lg bg-cover bg-center" />}
-          <div className="p-6 pt-4">
-            <Form {...cardForm}>
-              <form onSubmit={cardForm.handleSubmit(onCardSubmit)} className="space-y-4">
-                <DialogHeader className="pr-8">
-                  <DialogTitle className="sr-only">Editing Card: {card.content}</DialogTitle>
-                  <DialogDescription className="sr-only">Modify card details, add attachments, checklists, and more.</DialogDescription>
-                  <div className="flex items-start gap-3">
-                    <Checkbox id="card-completed-checkbox" checked={card.is_completed} onCheckedChange={(checked) => onUpdateCard(card.id, { is_completed: !!checked })} className="mt-2 h-5 w-5" />
-                    <div className="flex-grow">
-                      <FormField control={cardForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Input {...field} className={cn("text-lg font-bold border-none shadow-none -ml-2", card.is_completed && "line-through text-muted-foreground")} /></FormControl>{cardForm.formState.errors.content && <p className="text-sm text-destructive ml-2">{cardForm.formState.errors.content.message}</p>}</FormItem>)} />
+        <DialogContent className="sm:max-w-[625px] p-0 flex flex-col max-h-[90vh]">
+          {card.cover_config && <div style={coverStyle} className="h-32 w-full rounded-t-lg bg-cover bg-center flex-shrink-0" />}
+          <div className="flex-grow overflow-y-auto">
+            <div className="p-6 pt-4">
+              <Form {...cardForm}>
+                <form id="card-details-form" onSubmit={cardForm.handleSubmit(onCardSubmit)} className="space-y-4">
+                  <DialogHeader className="pr-8">
+                    <DialogTitle className="sr-only">Editing Card: {card.content}</DialogTitle>
+                    <DialogDescription className="sr-only">Modify card details, add attachments, checklists, and more.</DialogDescription>
+                    <div className="flex items-start gap-3">
+                      <Checkbox id="card-completed-checkbox" checked={card.is_completed} onCheckedChange={(checked) => onUpdateCard(card.id, { is_completed: !!checked })} className="mt-2 h-5 w-5" />
+                      <div className="flex-grow">
+                        <FormField control={cardForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Input {...field} className={cn("text-lg font-bold border-none shadow-none -ml-2", card.is_completed && "line-through text-muted-foreground")} /></FormControl>{cardForm.formState.errors.content && <p className="text-sm text-destructive ml-2">{cardForm.formState.errors.content.message}</p>}</FormItem>)} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground pl-10">in list <span className="font-medium text-foreground">{lists.find(l => l.id === card.list_id)?.title}</span></div>
-                </DialogHeader>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2 space-y-6">
-                    <div className="flex flex-wrap gap-4">
-                      {card.labels.length > 0 && (<div><h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Labels</h3><div className="flex flex-wrap gap-1">{card.labels.map(label => (<div key={label.id} className="rounded-sm px-3 py-1.5 text-sm font-bold text-white" style={{backgroundColor: label.color}}>{label.name}</div>))}</div></div>)}
-                      {card.related_cards.length > 0 && (<div><h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Related Cards</h3><div className="flex flex-wrap gap-1">{card.related_cards.map(rc => (<Button key={rc.id} variant="secondary" size="sm" onClick={() => onSelectCard(rc.id)}>{rc.content}</Button>))}</div></div>)}
-                    </div>
-                    {showDates && (<div><div className="flex justify-between items-center mb-2"><h3 className="text-xs font-bold uppercase text-muted-foreground">Dates</h3><Button type="button" variant="ghost" size="sm" className="text-xs h-auto py-1 px-2" onClick={() => { cardForm.setValue('start_date', null); cardForm.setValue('due_date', null); setShowDates(false); }}>Remove dates</Button></div><div className="grid grid-cols-1 gap-4"><FormField control={cardForm.control} name="start_date" render={({ field }) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Start date</FormLabel><DateTimePicker date={field.value} setDate={field.onChange} /></FormItem>)} /><FormField control={cardForm.control} name="due_date" render={({ field }) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Due date</FormLabel><div className="flex items-center gap-2"><div className="flex-grow"><DateTimePicker date={field.value} setDate={field.onChange} /></div>{status && (<span className={cn("px-3 py-1 rounded-md text-xs font-medium", status.color)}>{status.text}</span>)}</div>{cardForm.formState.errors.due_date && (<p className="text-sm text-destructive mt-1">{cardForm.formState.errors.due_date.message}</p>)}</FormItem>)} /></div></div>)}
-                    <FormField control={cardForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} placeholder="Add a more detailed description..." /></FormControl></FormItem>)} />
-                    {card.attachments && card.attachments.length > 0 && (<div className="space-y-3"><Separator /><div className="flex items-center gap-4"><Paperclip className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Attachments</h3></div><div className="space-y-2 pl-9">{card.attachments.map(attachment => (<div key={attachment.id} className="flex items-center gap-4 group"><a href={getPublicUrl('card-attachments', attachment.file_path)} target="_blank" rel="noopener noreferrer" className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center font-bold text-gray-500 text-sm hover:bg-gray-300">{attachment.file_type?.split('/')[1]?.toUpperCase().substring(0, 4) || 'FILE'}</a><div className="flex-grow"><a href={getPublicUrl('card-attachments', attachment.file_path)} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{attachment.file_name}</a><p className="text-xs text-muted-foreground">Added {formatDistanceToNow(new Date(attachment.created_at), { addSuffix: true })}</p></div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => handleDownload(attachment)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem><DropdownMenuItem onClick={() => { setRenamingAttachment(attachment); setNewAttachmentName(attachment.file_name); }}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem><DropdownMenuItem onClick={() => onDeleteAttachment(attachment.id)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>))}</div></div>)}
-                    {card.checklists && card.checklists.length > 0 && (<div className="space-y-6"><Separator />{card.checklists.map(checklist => (<Checklist key={checklist.id} checklist={checklist} onUpdateChecklist={onUpdateChecklist} onDeleteChecklist={onDeleteChecklist} onAddChecklistItem={onAddChecklistItem} onUpdateChecklistItem={onUpdateChecklistItem} onDeleteChecklistItem={onDeleteChecklistItem} />))}</div>)}
-                    <Separator />
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4"><MessageSquare className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Comments</h3></div>
-                      <div className="pl-9 space-y-4">
-                        <Form {...commentForm}>
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-8 w-8"><AvatarImage src={session?.user?.user_metadata?.avatar_url} /><AvatarFallback>{session?.user?.email?.[0].toUpperCase()}</AvatarFallback></Avatar>
-                            <div className="flex-grow">
-                              <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-2">
-                                  <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
-                                  {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
-                                </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <AtSign className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" onSelect={(e) => e.preventDefault()}>
-                                    <DropdownMenuLabel>Mention</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuCheckboxItem
-                                      checked={mentionedUsers.includes('everyone')}
-                                      onCheckedChange={(checked) => {
-                                        setMentionedUsers(prev => checked ? [...prev, 'everyone'] : prev.filter(id => id !== 'everyone'));
-                                      }}
-                                    >
-                                      Everyone
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuSeparator />
-                                    {boardMembers.map(member => (
+                    <div className="text-sm text-muted-foreground pl-10">in list <span className="font-medium text-foreground">{lists.find(l => l.id === card.list_id)?.title}</span></div>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-6">
+                      <div className="flex flex-wrap gap-4">
+                        {card.labels.length > 0 && (<div><h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Labels</h3><div className="flex flex-wrap gap-1">{card.labels.map(label => (<div key={label.id} className="rounded-sm px-3 py-1.5 text-sm font-bold text-white" style={{backgroundColor: label.color}}>{label.name}</div>))}</div></div>)}
+                        {card.related_cards.length > 0 && (<div><h3 className="text-xs font-bold uppercase text-muted-foreground mb-2">Related Cards</h3><div className="flex flex-wrap gap-1">{card.related_cards.map(rc => (<Button key={rc.id} variant="secondary" size="sm" onClick={() => onSelectCard(rc.id)}>{rc.content}</Button>))}</div></div>)}
+                      </div>
+                      {showDates && (<div><div className="flex justify-between items-center mb-2"><h3 className="text-xs font-bold uppercase text-muted-foreground">Dates</h3><Button type="button" variant="ghost" size="sm" className="text-xs h-auto py-1 px-2" onClick={() => { cardForm.setValue('start_date', null); cardForm.setValue('due_date', null); setShowDates(false); }}>Remove dates</Button></div><div className="grid grid-cols-1 gap-4"><FormField control={cardForm.control} name="start_date" render={({ field }) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Start date</FormLabel><DateTimePicker date={field.value} setDate={field.onChange} /></FormItem>)} /><FormField control={cardForm.control} name="due_date" render={({ field }) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Due date</FormLabel><div className="flex items-center gap-2"><div className="flex-grow"><DateTimePicker date={field.value} setDate={field.onChange} /></div>{status && (<span className={cn("px-3 py-1 rounded-md text-xs font-medium", status.color)}>{status.text}</span>)}</div>{cardForm.formState.errors.due_date && (<p className="text-sm text-destructive mt-1">{cardForm.formState.errors.due_date.message}</p>)}</FormItem>)} /></div></div>)}
+                      <FormField control={cardForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} placeholder="Add a more detailed description..." /></FormControl></FormItem>)} />
+                      {card.attachments && card.attachments.length > 0 && (<div className="space-y-3"><Separator /><div className="flex items-center gap-4"><Paperclip className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Attachments</h3></div><div className="space-y-2 pl-9">{card.attachments.map(attachment => (<div key={attachment.id} className="flex items-center gap-4 group"><a href={getPublicUrl('card-attachments', attachment.file_path)} target="_blank" rel="noopener noreferrer" className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center font-bold text-gray-500 text-sm hover:bg-gray-300">{attachment.file_type?.split('/')[1]?.toUpperCase().substring(0, 4) || 'FILE'}</a><div className="flex-grow"><a href={getPublicUrl('card-attachments', attachment.file_path)} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{attachment.file_name}</a><p className="text-xs text-muted-foreground">Added {formatDistanceToNow(new Date(attachment.created_at), { addSuffix: true })}</p></div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onClick={() => handleDownload(attachment)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem><DropdownMenuItem onClick={() => { setRenamingAttachment(attachment); setNewAttachmentName(attachment.file_name); }}><Edit className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem><DropdownMenuItem onClick={() => onDeleteAttachment(attachment.id)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>))}</div></div>)}
+                      {card.checklists && card.checklists.length > 0 && (<div className="space-y-6"><Separator />{card.checklists.map(checklist => (<Checklist key={checklist.id} checklist={checklist} onUpdateChecklist={onUpdateChecklist} onDeleteChecklist={onDeleteChecklist} onAddChecklistItem={onAddChecklistItem} onUpdateChecklistItem={onUpdateChecklistItem} onDeleteChecklistItem={onDeleteChecklistItem} />))}</div>)}
+                      <Separator />
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4"><MessageSquare className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Comments</h3></div>
+                        <div className="pl-9 space-y-4">
+                          <Form {...commentForm}>
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-8 w-8"><AvatarImage src={session?.user?.user_metadata?.avatar_url} /><AvatarFallback>{session?.user?.email?.[0].toUpperCase()}</AvatarFallback></Avatar>
+                              <div className="flex-grow">
+                                <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
+                                <div className="flex items-center justify-between mt-2">
+                                  <div className="flex items-center gap-2">
+                                    <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
+                                    {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <AtSign className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" onSelect={(e) => e.preventDefault()}>
+                                      <DropdownMenuLabel>Mention</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuCheckboxItem
-                                        key={member.user_id}
-                                        checked={mentionedUsers.includes(member.user_id)}
+                                        checked={mentionedUsers.includes('everyone')}
                                         onCheckedChange={(checked) => {
-                                          setMentionedUsers(prev => checked ? [...prev, member.user_id] : prev.filter(id => id !== member.user_id));
+                                          setMentionedUsers(prev => checked ? [...prev, 'everyone'] : prev.filter(id => id !== 'everyone'));
                                         }}
                                       >
-                                        {member.user.full_name || member.user.email}
+                                        Everyone
                                       </DropdownMenuCheckboxItem>
-                                    ))}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                      <DropdownMenuSeparator />
+                                      {boardMembers.map(member => (
+                                        <DropdownMenuCheckboxItem
+                                          key={member.user_id}
+                                          checked={mentionedUsers.includes(member.user_id)}
+                                          onCheckedChange={(checked) => {
+                                            setMentionedUsers(prev => checked ? [...prev, member.user_id] : prev.filter(id => id !== member.user_id));
+                                          }}
+                                        >
+                                          {member.user.full_name || member.user.email}
+                                        </DropdownMenuCheckboxItem>
+                                      ))}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </Form>
-                        <div className="space-y-4">
-                          {card.comments.map(comment => (
-                            <div key={comment.id} className="flex items-start gap-3">
-                              <Avatar className="h-8 w-8"><AvatarImage src={comment.user?.avatar_url || undefined} /><AvatarFallback>{comment.user?.full_name?.[0] || 'U'}</AvatarFallback></Avatar>
-                              <div className="flex-grow">
-                                <div className="flex items-baseline gap-2">
-                                  <p className="font-semibold text-sm">{comment.user?.full_name || 'Anonymous'}</p>
-                                  <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
-                                </div>
-                                <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">
-                                  <CommentRenderer content={comment.content} />
-                                </div>
-                                {comment.user_id === session?.user?.id && (
-                                  <div className="flex gap-2 mt-1">
-                                    <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setEditingComment(comment); commentForm.setValue('content', comment.content); }}>Edit</Button>
-                                    <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-destructive" onClick={() => onDeleteComment(comment.id)}>Delete</Button>
+                          </Form>
+                          <div className="space-y-4">
+                            {card.comments.map(comment => (
+                              <div key={comment.id} className="flex items-start gap-3">
+                                <Avatar className="h-8 w-8"><AvatarImage src={comment.user?.avatar_url || undefined} /><AvatarFallback>{comment.user?.full_name?.[0] || 'U'}</AvatarFallback></Avatar>
+                                <div className="flex-grow">
+                                  <div className="flex items-baseline gap-2">
+                                    <p className="font-semibold text-sm">{comment.user?.full_name || 'Anonymous'}</p>
+                                    <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
                                   </div>
-                                )}
+                                  <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">
+                                    <CommentRenderer content={comment.content} />
+                                  </div>
+                                  {comment.user_id === session?.user?.id && (
+                                    <div className="flex gap-2 mt-1">
+                                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setEditingComment(comment); commentForm.setValue('content', comment.content); }}>Edit</Button>
+                                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-destructive" onClick={() => onDeleteComment(comment.id)}>Delete</Button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium mb-2">Add to card</h3>
-                    <AttachmentPopover onAddAttachment={(file) => onAddAttachment(card.id, file)}><Button type="button" variant="secondary" className="w-full justify-start"><Paperclip className="mr-2 h-4 w-4" /> Attachment</Button></AttachmentPopover>
-                    <CoverPopover card={card} onCoverChange={handleCoverChange}><Button type="button" variant="secondary" className="w-full justify-start"><CoverIcon className="mr-2 h-4 w-4" /> Cover</Button></CoverPopover>
-                    <LabelPopover card={card} boardLabels={boardLabels} onToggleLabelOnCard={onToggleLabelOnCard} onCreateLabel={onCreateLabel} onUpdateLabel={onUpdateLabel} />
-                    <ChecklistPopover onAddChecklist={(title) => onAddChecklist(card.id, title)} />
-                    <RelatedCardsPopover card={card} allCards={allCards} onAddRelation={onAddRelation} onRemoveRelation={onRemoveRelation} />
-                    {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
-                    <div>
-                      <h3 className="text-sm font-medium my-2">Actions</h3>
-                      <FormField control={cardForm.control} name="list_id" render={({ field }) => (<FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Move card..." /></SelectTrigger></FormControl><SelectContent>{lists.map(list => (<SelectItem key={list.id} value={list.id}>Move to {list.title}</SelectItem>))}</SelectContent></Select></FormItem>)} />
-                      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}><AlertDialogTrigger asChild><Button type="button" variant="destructive" className="w-full justify-start mt-2"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent><AlertDialogDescriptionComponent>This will permanently delete the card. This action cannot be undone.</AlertDialogDescriptionComponent></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium mb-2">Add to card</h3>
+                      <AttachmentPopover onAddAttachment={(file) => onAddAttachment(card.id, file)}><Button type="button" variant="secondary" className="w-full justify-start"><Paperclip className="mr-2 h-4 w-4" /> Attachment</Button></AttachmentPopover>
+                      <CoverPopover card={card} onCoverChange={handleCoverChange}><Button type="button" variant="secondary" className="w-full justify-start"><CoverIcon className="mr-2 h-4 w-4" /> Cover</Button></CoverPopover>
+                      <LabelPopover card={card} boardLabels={boardLabels} onToggleLabelOnCard={onToggleLabelOnCard} onCreateLabel={onCreateLabel} onUpdateLabel={onUpdateLabel} />
+                      <ChecklistPopover onAddChecklist={(title) => onAddChecklist(card.id, title)} />
+                      <RelatedCardsPopover card={card} allCards={allCards} onAddRelation={onAddRelation} onRemoveRelation={onRemoveRelation} />
+                      {!showDates && <Button type="button" variant="secondary" className="w-full justify-start" onClick={() => setShowDates(true)}><CalendarIcon className="mr-2 h-4 w-4" /> Dates</Button>}
+                      <div>
+                        <h3 className="text-sm font-medium my-2">Actions</h3>
+                        <FormField control={cardForm.control} name="list_id" render={({ field }) => (<FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Move card..." /></SelectTrigger></FormControl><SelectContent>{lists.map(list => (<SelectItem key={list.id} value={list.id}>Move to {list.title}</SelectItem>))}</SelectContent></Select></FormItem>)} />
+                        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}><AlertDialogTrigger asChild><Button type="button" variant="destructive" className="w-full justify-start mt-2"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent><AlertDialogDescriptionComponent>This will permanently delete the card. This action cannot be undone.</AlertDialogDescriptionComponent></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="submit">Save Changes</Button>
-                </DialogFooter>
-              </form>
-            </Form>
+                </form>
+              </Form>
+            </div>
           </div>
+          <DialogFooter className="p-6 border-t flex-shrink-0">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" form="card-details-form">Save Changes</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog open={!!renamingAttachment} onOpenChange={() => setRenamingAttachment(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitleComponent>Rename Attachment</AlertDialogTitleComponent><AlertDialogDescriptionComponent>Enter a new name for the file.</AlertDialogDescriptionComponent></AlertDialogHeader><Input value={newAttachmentName} onChange={(e) => setNewAttachmentName(e.target.value)} /><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleRenameSubmit}>Save</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
