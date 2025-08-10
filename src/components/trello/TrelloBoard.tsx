@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, ChecklistItem } from '@/types/trello';
+import { Board as BoardType, Card as CardType, List as ListType, Label as LabelType, ChecklistItem, Comment } from '@/types/trello';
 import { TrelloList } from './TrelloList';
 import { AddListForm } from './AddListForm';
 import { CardDetailsModal } from './CardDetailsModal';
@@ -163,7 +163,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to add card: ' + error.message);
     } else if (newCard) {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: [], attachments: []}].sort((a, b) => a.position - b.position) } : l) }));
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: [], attachments: [], comments: []}].sort((a, b) => a.position - b.position) } : l) }));
       showSuccess('Card added!');
     }
   };
@@ -443,6 +443,35 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     }
   };
 
+  const handleAddComment = async (cardId: string, content: string) => {
+    if (!session?.user) return;
+    const { data, error } = await supabase.from('card_comments').insert({ card_id: cardId, user_id: session.user.id, content }).select('*, user:users(id, full_name, avatar_url)').single();
+    if (error) {
+      showError('Failed to add comment.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, comments: [data as Comment, ...c.comments] } : c) })) }));
+    }
+  };
+
+  const handleUpdateComment = async (commentId: string, content: string) => {
+    const { data, error } = await supabase.from('card_comments').update({ content }).eq('id', commentId).select('*, user:users(id, full_name, avatar_url)').single();
+    if (error) {
+      showError('Failed to update comment.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, comments: c.comments.map(com => com.id === commentId ? data as Comment : com) })) })) }));
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const { error } = await supabase.from('card_comments').delete().eq('id', commentId);
+    if (error) {
+      showError('Failed to delete comment.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, comments: c.comments.filter(com => com.id !== commentId) })) })) }));
+      showSuccess('Comment deleted.');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
@@ -488,6 +517,9 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
           onAddAttachment={handleAddAttachment}
           onUpdateAttachment={handleUpdateAttachment}
           onDeleteAttachment={handleDeleteAttachment}
+          onAddComment={handleAddComment}
+          onUpdateComment={handleUpdateComment}
+          onDeleteComment={handleDeleteComment}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Card as CardType, List as ListType, Label as LabelType } from '@/types/trello';
+import { Card as CardType, List as ListType } from '@/types/trello';
 import { TrelloCard } from './TrelloCard';
 import { AddCardForm } from './AddCardForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

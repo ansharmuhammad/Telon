@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Board as BoardType, BackgroundConfig, Checklist as ChecklistType, ChecklistItem } from '@/types/trello';
+import { Board as BoardType, BackgroundConfig, Checklist as ChecklistType, ChecklistItem, Comment } from '@/types/trello';
 import { useAuth } from '@/contexts/AuthContext';
 import TrelloBoard from '@/components/trello/TrelloBoard';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,8 @@ const BoardPage = () => {
               *,
               items:checklist_items(*)
             ),
-            attachments:card_attachments(*)
+            attachments:card_attachments(*),
+            comments:card_comments(*, user:users(id, full_name, avatar_url))
           )
         )
       `)
@@ -82,12 +83,15 @@ const BoardPage = () => {
             items: (checklist.items || []).sort((a: ChecklistItem, b: ChecklistItem) => a.position - b.position)
           })).sort((a: ChecklistType, b: ChecklistType) => a.position - b.position);
 
+          const comments = (card.comments || []).sort((a: Comment, b: Comment) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
           return { 
             ...card, 
             labels: card.card_labels.map((cl: any) => cl.labels).filter(Boolean), 
             related_cards: [...related_as_1, ...related_as_2],
             checklists: checklists,
-            attachments: card.attachments || []
+            attachments: card.attachments || [],
+            comments: comments
           }
         }).sort((a, b) => a.position - b.position)
       })).sort((a, b) => a.position - b.position)

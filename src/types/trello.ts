@@ -70,6 +70,21 @@ export type Attachment = {
   created_at: string;
 };
 
+export type UserProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+export type Comment = {
+  id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  user: UserProfile;
+};
+
 export type Card = {
   id: string;
   content: string;
@@ -84,6 +99,7 @@ export type Card = {
   related_cards: RelatedCardInfo[];
   checklists: Checklist[];
   attachments: Attachment[];
+  comments: Comment[];
 };
 
 export type List = {
