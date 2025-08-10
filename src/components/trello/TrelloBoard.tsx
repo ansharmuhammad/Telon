@@ -446,11 +446,19 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
   const handleAddComment = async (cardId: string, content: string) => {
     if (!session?.user) return;
 
-    const mentionRegex = /@\[(.*?)\]\(user:(.*?)\)/g;
-    const mentionedUserIds = [];
+    const userMentionRegex = /@\[(.*?)\]\(user:(.*?)\)/g;
+    const everyoneMentionRegex = /@\[Everyone\]\(group:everyone\)/g;
+    const mentionedUserIds = new Set<string>();
     let match;
-    while ((match = mentionRegex.exec(content)) !== null) {
-      mentionedUserIds.push(match[2]);
+
+    while ((match = userMentionRegex.exec(content)) !== null) {
+      mentionedUserIds.add(match[2]);
+    }
+
+    if (everyoneMentionRegex.test(content)) {
+      board.members.forEach(member => {
+        mentionedUserIds.add(member.user_id);
+      });
     }
     
     const { data: insertedComment, error } = await supabase
@@ -464,7 +472,9 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       return;
     }
 
-    const notifications = mentionedUserIds.map(userId => ({
+    const finalMentionedIds = Array.from(mentionedUserIds).filter(id => id !== session.user.id);
+
+    const notifications = finalMentionedIds.map(userId => ({
       user_id: userId,
       actor_id: session.user.id,
       type: 'COMMENT_MENTION',

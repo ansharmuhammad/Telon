@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Trash2, Image as CoverIcon, Paperclip, MoreVertical, Download, Edit, MessageSquare } from 'lucide-react';
+import { CalendarIcon, Trash2, Image as CoverIcon, Paperclip, MoreVertical, Download, Edit, MessageSquare, AtSign } from 'lucide-react';
 import { cn, getCoverStyle, getPublicUrl } from '@/lib/utils';
 import { LabelPopover } from './LabelPopover';
 import { RelatedCardsPopover } from './RelatedCardsPopover';
@@ -22,13 +22,11 @@ import { Checklist } from './Checklist';
 import { Separator } from '../ui/separator';
 import { DateTimePicker } from '../ui/datetime-picker';
 import { AttachmentPopover } from './AttachmentPopover';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { CommentRenderer } from './CommentRenderer';
 
 const cardFormSchema = z.object({
@@ -90,9 +88,7 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
   const [renamingAttachment, setRenamingAttachment] = useState<AttachmentType | null>(null);
   const [newAttachmentName, setNewAttachmentName] = useState('');
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
-  const [mentionPopoverOpen, setMentionPopoverOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
 
   const cardForm = useForm<z.infer<typeof cardFormSchema>>({
     resolver: zodResolver(cardFormSchema),
@@ -136,8 +132,30 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
   };
 
   const onCommentSubmit = async (values: z.infer<typeof commentFormSchema>) => {
-    await onAddComment(card.id, values.content);
-    commentForm.reset();
+    let finalContent = values.content;
+    const mentions: string[] = [];
+
+    if (mentionedUsers.includes('everyone')) {
+      mentions.push('@[Everyone](group:everyone)');
+    }
+
+    mentionedUsers.forEach(id => {
+      if (id !== 'everyone') {
+        const member = boardMembers.find(m => m.user_id === id);
+        if (member) {
+          const displayName = member.user.full_name || member.user.email || 'User';
+          mentions.push(`@[${displayName}](user:${member.user_id})`);
+        }
+      }
+    });
+
+    if (mentions.length > 0) {
+      finalContent += `\n\nMentions: ${mentions.join(' ')}`;
+    }
+
+    await onAddComment(card.id, finalContent);
+    commentForm.reset({ content: '' });
+    setMentionedUsers([]);
   };
 
   const onCommentUpdateSubmit = async (values: z.infer<typeof commentFormSchema>) => {
@@ -177,43 +195,6 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
     if (!renamingAttachment || !newAttachmentName.trim()) return;
     await onUpdateAttachment(renamingAttachment.id, { file_name: newAttachmentName.trim() });
     setRenamingAttachment(null);
-  };
-
-  const handleMentionSelect = (member: BoardMember) => {
-    const textarea = commentTextareaRef.current;
-    if (!textarea) return;
-
-    const currentContent = textarea.value;
-    const atIndex = currentContent.lastIndexOf('@', textarea.selectionStart);
-    
-    if (atIndex === -1) return;
-
-    const displayName = member.user.full_name || member.user.email || 'User';
-    const mentionText = `@[${displayName}](user:${member.user_id}) `;
-    
-    const newContent = currentContent.substring(0, atIndex) + mentionText + currentContent.substring(textarea.selectionStart);
-    
-    commentForm.setValue('content', newContent);
-    setMentionPopoverOpen(false);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = atIndex + mentionText.length;
-    }, 0);
-  };
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const selectionStart = e.target.selectionStart;
-    const lastAt = value.lastIndexOf('@', selectionStart - 1);
-
-    if (lastAt !== -1 && !/\s/.test(value.substring(lastAt + 1, selectionStart))) {
-      setMentionQuery(value.substring(lastAt + 1, selectionStart));
-      setMentionPopoverOpen(true);
-    } else {
-      setMentionPopoverOpen(false);
-    }
-    commentForm.setValue('content', value);
   };
 
   const { style: coverStyle } = getCoverStyle(card.cover_config);
@@ -260,30 +241,43 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                           <div className="flex items-start gap-3">
                             <Avatar className="h-8 w-8"><AvatarImage src={session?.user?.user_metadata?.avatar_url} /><AvatarFallback>{session?.user?.email?.[0].toUpperCase()}</AvatarFallback></Avatar>
                             <div className="flex-grow">
-                              <Popover open={mentionPopoverOpen} onOpenChange={setMentionPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                  <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} ref={commentTextareaRef} onChange={handleCommentChange} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-0" align="start">
-                                  <Command>
-                                    <CommandInput placeholder="Mention user..." value={mentionQuery} onValueChange={setMentionQuery} />
-                                    <CommandList>
-                                      <CommandEmpty>No user found.</CommandEmpty>
-                                      <CommandGroup>
-                                        {boardMembers.filter(m => (m.user.full_name || m.user.email || '').toLowerCase().includes(mentionQuery.toLowerCase())).map(member => (
-                                          <CommandItem key={member.user_id} onSelect={() => handleMentionSelect(member)}>
-                                            <Avatar className="h-6 w-6 mr-2"><AvatarImage src={member.user.avatar_url || undefined} /><AvatarFallback>{member.user.full_name?.[0] || member.user.email?.[0] || 'U'}</AvatarFallback></Avatar>
-                                            <span>{member.user.full_name || member.user.email}</span>
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
-                                {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
+                              <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center gap-2">
+                                  <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
+                                  {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <AtSign className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onSelect={(e) => e.preventDefault()}>
+                                    <DropdownMenuLabel>Mention</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem
+                                      checked={mentionedUsers.includes('everyone')}
+                                      onCheckedChange={(checked) => {
+                                        setMentionedUsers(prev => checked ? [...prev, 'everyone'] : prev.filter(id => id !== 'everyone'));
+                                      }}
+                                    >
+                                      Everyone
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    {boardMembers.map(member => (
+                                      <DropdownMenuCheckboxItem
+                                        key={member.user_id}
+                                        checked={mentionedUsers.includes(member.user_id)}
+                                        onCheckedChange={(checked) => {
+                                          setMentionedUsers(prev => checked ? [...prev, member.user_id] : prev.filter(id => id !== member.user_id));
+                                        }}
+                                      >
+                                        {member.user.full_name || member.user.email}
+                                      </DropdownMenuCheckboxItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
                           </div>
