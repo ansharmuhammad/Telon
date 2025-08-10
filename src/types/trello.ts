@@ -1,3 +1,6 @@
+/**
+ * Represents a file object from Supabase Storage.
+ */
 export type FileObject = {
   name: string;
   id: string;
@@ -7,6 +10,9 @@ export type FileObject = {
   metadata: Record<string, any>;
 };
 
+/**
+ * Represents a label with a name and color.
+ */
 export type Label = {
   id: string;
   name: string | null;
@@ -14,11 +20,16 @@ export type Label = {
   board_id: string;
 };
 
+/**
+ * Represents a simplified card object for displaying related cards.
+ */
 export type RelatedCardInfo = {
-  id: string;
+  id:string;
   content: string;
   list_title: string;
 };
+
+// --- Background & Cover Configuration Types ---
 
 export type BackgroundConfigImage = {
   type: 'image';
@@ -38,13 +49,27 @@ export type BackgroundConfigCustomImage = {
   path: string;
 };
 
+/**
+ * Defines the visual background of a board. Can be a color, a Unsplash image, or a custom uploaded image.
+ */
 export type BackgroundConfig = BackgroundConfigImage | BackgroundConfigColor | BackgroundConfigCustomImage | null;
 
+// Cover configs extend background configs with a size property.
 export type CoverConfigImage = BackgroundConfigImage & { size: 'full' | 'header' };
 export type CoverConfigColor = BackgroundConfigColor & { size: 'full' | 'header' };
 export type CoverConfigCustomImage = BackgroundConfigCustomImage & { size: 'full' | 'header' };
+
+/**
+ * Defines the visual cover of a card.
+ */
 export type CoverConfig = CoverConfigImage | CoverConfigColor | CoverConfigCustomImage | null;
 
+
+// --- Card Sub-Item Types ---
+
+/**
+ * Represents a single item within a checklist.
+ */
 export type ChecklistItem = {
   id: string;
   content: string;
@@ -53,6 +78,9 @@ export type ChecklistItem = {
   checklist_id: string;
 };
 
+/**
+ * Represents a checklist container on a card.
+ */
 export type Checklist = {
   id: string;
   title: string;
@@ -61,6 +89,9 @@ export type Checklist = {
   items: ChecklistItem[];
 };
 
+/**
+ * Represents a file attached to a card.
+ */
 export type Attachment = {
   id: string;
   card_id: string;
@@ -70,6 +101,9 @@ export type Attachment = {
   created_at: string;
 };
 
+/**
+ * Represents a user's profile information.
+ */
 export type UserProfile = {
   id: string;
   full_name: string | null;
@@ -77,12 +111,18 @@ export type UserProfile = {
   email?: string | null;
 };
 
+/**
+ * Represents a member of a board, linking a user to a board with a specific role.
+ */
 export type BoardMember = {
   user_id: string;
   role: string;
   user: UserProfile;
 };
 
+/**
+ * Represents a comment made on a card.
+ */
 export type Comment = {
   id: string;
   content: string;
@@ -92,6 +132,12 @@ export type Comment = {
   user: UserProfile;
 };
 
+
+// --- Core Trello Types ---
+
+/**
+ * The main Card object, containing all its details and sub-items.
+ */
 export type Card = {
   id: string;
   content: string;
@@ -109,6 +155,9 @@ export type Card = {
   comments: Comment[];
 };
 
+/**
+ * Represents a List (column) on a board, which contains cards.
+ */
 export type List = {
   id:string;
   title: string;
@@ -117,6 +166,9 @@ export type List = {
   cards: Card[];
 };
 
+/**
+ * The top-level Board object, containing all lists, labels, and members.
+ */
 export type Board = {
   id: string;
   name: string;

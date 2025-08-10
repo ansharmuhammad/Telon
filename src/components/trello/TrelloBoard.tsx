@@ -14,17 +14,26 @@ type TrelloBoardProps = {
   onModalOpenChange: (isOpen: boolean, cardId?: string) => void;
 };
 
+/**
+ * The main component for rendering the Trello board interface.
+ * It manages the state of the board, lists, and cards, and handles
+ * all drag-and-drop logic and API calls for mutations.
+ * @param {TrelloBoardProps} props The component props.
+ */
 const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
   const { session } = useAuth();
 
+  // Memoize derived state for performance
   const allCards = useMemo(() => board.lists.flatMap(l => l.cards), [board.lists]);
   const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
 
+  // Sync local state if the initial board prop changes
   useEffect(() => {
     setBoard(initialBoard);
   }, [initialBoard]);
 
+  // Set up the main drag-and-drop monitor for the board
   useEffect(() => {
     return monitorForElements({
       onDrop: async ({ source, location }) => {
@@ -40,17 +49,27 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
         }
       },
     });
-  }, [board]);
+  }, [board]); // Re-create monitor if board state changes to ensure handlers have latest data
 
+  /**
+   * Handles the drop event for a card.
+   * @param sourceData - Data from the dragged card.
+   * @param destData - Data from the drop target (list or another card).
+   */
   const handleCardDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
     const cardId = sourceData.cardId as string;
     const destListId = destData.listId as string;
-    const destCardId = destData.cardId as string | undefined;
+    const destCardId = destData.cardId as string | undefined; // If dropping on another card
 
-    if (cardId === destCardId) return;
+    if (cardId === destCardId) return; // Cannot drop a card on itself
     await handleMoveCard(cardId, destListId, destCardId);
   };
 
+  /**
+   * Handles the drop event for a list.
+   * @param sourceData - Data from the dragged list.
+   * @param destData - Data from the drop target list.
+   */
   const handleListDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
     const sourceListId = sourceData.listId as string;
     const destListId = destData.listId as string;
@@ -59,12 +78,21 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     await handleMoveList(sourceListId, undefined, destListId);
   };
 
+  /**
+   * Moves a card to a new position, either in the same list or a new one.
+   * Calculates the new position value based on the positions of the surrounding cards.
+   * @param cardId - The ID of the card to move.
+   * @param newListId - The ID of the destination list.
+   * @param beforeCardId - The ID of the card to insert before. If undefined, moves to the end.
+   */
   const handleMoveCard = async (cardId: string, newListId: string, beforeCardId?: string) => {
+    // Optimistic UI update
     const originalBoard = JSON.parse(JSON.stringify(board));
     let cardToMove: CardType | undefined;
     let sourceListId: string | undefined;
 
     const tempBoard = JSON.parse(JSON.stringify(board));
+    // Find and remove the card from its original list
     for (const list of tempBoard.lists) {
       const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
       if (cardIndex > -1) {
@@ -76,30 +104,40 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
     if (!cardToMove || !sourceListId) return;
 
+    // Add the card to its new list
     const destList = tempBoard.lists.find((l: ListType) => l.id === newListId);
     if (!destList) return;
 
     const destIndex = beforeCardId ? destList.cards.findIndex((c: CardType) => c.id === beforeCardId) : destList.cards.length;
     destList.cards.splice(destIndex, 0, cardToMove);
 
+    // Calculate the new position for the card. This is a common pattern for ordering
+    // items without having to re-index the entire list.
     const cardBefore = destList.cards[destIndex - 1];
     const cardAfter = destList.cards[destIndex + 1];
     const posBefore = cardBefore ? cardBefore.position : 0;
-    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
+    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2); // Add a gap
     const newPosition = (posBefore + posAfter) / 2;
 
     cardToMove.position = newPosition;
     cardToMove.list_id = newListId;
 
-    setBoard(tempBoard);
+    setBoard(tempBoard); // Apply the optimistic update
 
+    // Make the API call
     const { error } = await supabase.from('cards').update({ list_id: newListId, position: newPosition }).eq('id', cardId);
     if (error) {
       showError('Failed to move card.');
-      setBoard(originalBoard);
+      setBoard(originalBoard); // Revert on failure
     }
   };
 
+  /**
+   * Moves a list to a new position.
+   * @param listId - The ID of the list to move.
+   * @param direction - 'left' or 'right' for button-based moves.
+   * @param targetListId - The ID of the list to drop onto for drag-and-drop moves.
+   */
   const handleMoveList = async (listId: string, direction?: 'left' | 'right', targetListId?: string) => {
     const originalBoard = JSON.parse(JSON.stringify(board));
     const lists = [...board.lists].sort((a, b) => a.position - b.position);
@@ -138,6 +176,14 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       setBoard(originalBoard);
     }
   };
+
+  // --- CRUD Handlers for Board Items ---
+  // These functions follow a similar pattern:
+  // 1. Make the API call to Supabase.
+  // 2. On success, update the local state to reflect the change.
+  // 3. On failure, show an error toast.
+  // For deletions and updates, optimistic updates could be used, but for simplicity,
+  // we update the state after the API call succeeds.
 
   const handleAddCard = async (listId: string, content: string, afterPosition?: number) => {
     const list = board.lists.find(l => l.id === listId);
@@ -251,6 +297,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (!card) return;
     const isApplied = card.labels.some(l => l.id === labelId);
     
+    // Optimistic update for a snappier UI
     const originalBoard = JSON.parse(JSON.stringify(board));
     const tempBoard = JSON.parse(JSON.stringify(board));
     const cardToUpdate = tempBoard.lists.flatMap((l: ListType) => l.cards).find((c: CardType) => c.id === cardId);
@@ -269,34 +316,19 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
     if (error) {
       showError('Failed to update label on card.');
-      setBoard(originalBoard);
+      setBoard(originalBoard); // Revert on failure
     }
   };
 
   const handleAddRelation = async (card1Id: string, card2Id: string) => {
-    const [id1, id2] = [card1Id, card2Id].sort();
+    const [id1, id2] = [card1Id, card2Id].sort(); // Store consistently to prevent duplicates
     const { error } = await supabase.from('card_relations').insert({ card1_id: id1, card2_id: id2 });
 
     if (error) {
       showError('Failed to add related card.');
     } else {
-      const card1 = allCards.find(c => c.id === card1Id);
-      const card2 = allCards.find(c => c.id === card2Id);
-      if (!card1 || !card2) return;
-
-      const newBoard = { ...board };
-      const updateCard = (card: CardType, relatedCard: CardType) => {
-        const list = newBoard.lists.find(l => l.id === card.list_id);
-        if (!list) return;
-        const cardIndex = list.cards.findIndex(c => c.id === card.id);
-        if (cardIndex === -1) return;
-        list.cards[cardIndex].related_cards.push({ id: relatedCard.id, content: relatedCard.content, list_title: newBoard.lists.find(l => l.id === relatedCard.list_id)?.title || '' });
-      };
-      
-      updateCard(card1, card2);
-      updateCard(card2, card1);
-      
-      setBoard(newBoard);
+      // This is a complex state update, so we just rely on the realtime subscription
+      // to refetch the data for simplicity. A manual state update would be more performant.
       showSuccess('Related card added.');
     }
   };
@@ -308,21 +340,6 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to remove related card.');
     } else {
-      const newBoard = { ...board };
-      const updateCard = (cardId: string, relatedCardId: string) => {
-        const card = allCards.find(c => c.id === cardId);
-        if (!card) return;
-        const list = newBoard.lists.find(l => l.id === card.list_id);
-        if (!list) return;
-        const cardIndex = list.cards.findIndex(c => c.id === card.id);
-        if (cardIndex === -1) return;
-        list.cards[cardIndex].related_cards = list.cards[cardIndex].related_cards.filter(rc => rc.id !== relatedCardId);
-      };
-
-      updateCard(card1Id, card2Id);
-      updateCard(card2Id, card1Id);
-
-      setBoard(newBoard);
       showSuccess('Related card removed.');
     }
   };

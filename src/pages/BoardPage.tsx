@@ -21,18 +21,28 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
 
+/**
+ * Renders the main board page, fetching all data for a specific board
+ * and handling user interactions like updating the board, background, etc.
+ */
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
-  useAuth();
+  useAuth(); // Ensures user is authenticated before accessing the page
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [board, setBoard] = useState<BoardType | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalCardId, setModalCardId] = useState<string | null>(null);
 
+  /**
+   * Fetches all data for the current board from Supabase.
+   * This includes lists, cards, labels, members, and all nested relations.
+   */
   const getBoardData = useCallback(async () => {
     if (!boardId) return;
 
+    // This is the main data query for the board page. It uses Supabase's nested selects
+    // to fetch the entire board structure in a single request.
     const { data: fullBoardData, error } = await supabase
       .from('boards')
       .select(`
@@ -70,6 +80,8 @@ const BoardPage = () => {
       return;
     }
 
+    // Map the raw data from Supabase to our structured TypeScript types.
+    // This includes sorting items by position and combining related card data.
     const boardWithMappedData: BoardType = {
       ...fullBoardData,
       is_closed: fullBoardData.is_closed,
@@ -106,7 +118,8 @@ const BoardPage = () => {
     getBoardData();
   }, [boardId, getBoardData]);
 
-  // Realtime subscription
+  // Set up Supabase real-time subscription to listen for any changes in the database.
+  // When a change occurs, it re-fetches the board data to keep the UI in sync.
   useEffect(() => {
     if (!boardId) return;
 
@@ -125,15 +138,22 @@ const BoardPage = () => {
         }
       });
 
+    // Unsubscribe from the channel when the component unmounts.
     return () => {
       supabase.removeChannel(channel);
     };
   }, [boardId, getBoardData]);
 
+  // Sync the modal's open state with the `cardId` URL search parameter.
   useEffect(() => {
     setModalCardId(searchParams.get('cardId'));
   }, [searchParams]);
 
+  /**
+   * Updates the URL search params to open or close the card details modal.
+   * @param {boolean} isOpen - Whether the modal should be open.
+   * @param {string} [cardId] - The ID of the card to show in the modal.
+   */
   const handleModalOpenChange = (isOpen: boolean, cardId?: string) => {
     const newSearchParams = new URLSearchParams(searchParams);
     if (isOpen && cardId) {
@@ -144,6 +164,10 @@ const BoardPage = () => {
     setSearchParams(newSearchParams, { replace: true });
   };
 
+  /**
+   * Handles updating the board's background configuration.
+   * @param {BackgroundConfig} newConfig - The new background configuration.
+   */
   const handleBackgroundChange = async (newConfig: BackgroundConfig) => {
     if (!board) return;
     const oldConfig = board.background_config;
@@ -162,6 +186,9 @@ const BoardPage = () => {
     }
   };
 
+  /**
+   * Handles closing the current board.
+   */
   const handleCloseBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -177,6 +204,9 @@ const BoardPage = () => {
     }
   };
 
+  /**
+   * Handles re-opening a closed board.
+   */
   const handleReopenBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -192,6 +222,9 @@ const BoardPage = () => {
     }
   };
 
+  /**
+   * Handles permanently deleting a board.
+   */
   const handleDeleteBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -207,6 +240,10 @@ const BoardPage = () => {
     }
   };
 
+  /**
+   * Handles changing the board's name.
+   * @param {string} name - The new name for the board.
+   */
   const handleBoardNameChange = async (name: string) => {
     if (!board) return;
     const oldName = board.name;
@@ -242,6 +279,7 @@ const BoardPage = () => {
     );
   }
 
+  // Render a special view for closed boards, allowing users to re-open or delete them.
   if (board.is_closed) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-gray-100">
