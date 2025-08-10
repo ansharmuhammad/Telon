@@ -445,6 +445,13 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
   const handleAddComment = async (cardId: string, content: string) => {
     if (!session?.user) return;
+
+    const mentionRegex = /@\[(.*?)\]\(user:(.*?)\)/g;
+    const mentionedUserIds = [];
+    let match;
+    while ((match = mentionRegex.exec(content)) !== null) {
+      mentionedUserIds.push(match[2]);
+    }
     
     const { data: insertedComment, error } = await supabase
       .from('card_comments')
@@ -455,6 +462,23 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to add comment.');
       return;
+    }
+
+    const notifications = mentionedUserIds.map(userId => ({
+      user_id: userId,
+      actor_id: session.user.id,
+      type: 'COMMENT_MENTION',
+      data: {
+        boardId: board.id,
+        boardName: board.name,
+        cardId: cardId,
+        cardContent: allCards.find(c => c.id === cardId)?.content || '',
+        actorName: session.user.user_metadata?.full_name || session.user.email || 'Someone'
+      }
+    }));
+
+    if (notifications.length > 0) {
+      await supabase.from('notifications').insert(notifications);
     }
 
     const newCommentForUI: Comment = {
@@ -525,6 +549,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
           allCards={allCards}
           lists={board.lists}
           boardLabels={board.labels}
+          boardMembers={board.members}
           onUpdateCard={handleUpdateCard}
           onDeleteCard={handleDeleteCard}
           onMoveCard={handleMoveCard}

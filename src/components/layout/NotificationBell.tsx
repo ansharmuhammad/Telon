@@ -8,15 +8,19 @@ import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+type NotificationData = {
+  boardId: string;
+  boardName: string;
+  actorName: string;
+  cardId?: string;
+  cardContent?: string;
+};
+
 type Notification = {
   id: string;
   actor_id: string;
   type: string;
-  data: {
-    boardId: string;
-    boardName: string;
-    actorName: string;
-  };
+  data: NotificationData;
   is_read: boolean;
   created_at: string;
 };
@@ -101,13 +105,23 @@ export const NotificationBell = () => {
   };
 
   const renderNotification = (notification: Notification) => {
+    const { data } = notification;
     switch (notification.type) {
       case 'BOARD_INVITE':
         return (
           <p>
-            <strong>{notification.data.actorName}</strong> invited you to the board{' '}
-            <Link to={`/board/${notification.data.boardId}`} className="font-bold hover:underline" onClick={() => setIsOpen(false)}>
-              {notification.data.boardName}
+            <strong>{data.actorName}</strong> invited you to the board{' '}
+            <Link to={`/board/${data.boardId}`} className="font-bold hover:underline" onClick={() => setIsOpen(false)}>
+              {data.boardName}
+            </Link>
+          </p>
+        );
+      case 'COMMENT_MENTION':
+        return (
+          <p>
+            <strong>{data.actorName}</strong> mentioned you in a comment on card{' '}
+            <Link to={`/board/${data.boardId}?cardId=${data.cardId}`} className="font-bold hover:underline" onClick={() => setIsOpen(false)}>
+              {data.cardContent}
             </Link>
           </p>
         );

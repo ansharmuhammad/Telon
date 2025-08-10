@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { isPast, differenceInHours, formatDistanceToNow } from 'date-fns';
-import { Card as CardType, List as ListType, Label as LabelType, CoverConfig, ChecklistItem, Attachment as AttachmentType, Comment } from '@/types/trello';
+import { Card as CardType, List as ListType, Label as LabelType, CoverConfig, ChecklistItem, Attachment as AttachmentType, Comment, BoardMember } from '@/types/trello';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { CommentRenderer } from './CommentRenderer';
 
 const cardFormSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -53,6 +56,7 @@ type CardDetailsModalProps = {
   allCards: CardType[];
   lists: ListType[];
   boardLabels: LabelType[];
+  boardMembers: BoardMember[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onUpdateCard: (cardId: string, data: Partial<Omit<CardType, 'id' | 'list_id' | 'labels' | 'related_cards'>>) => Promise<void>;
@@ -79,13 +83,16 @@ type CardDetailsModalProps = {
 };
 
 export const CardDetailsModal = (props: CardDetailsModalProps) => {
-  const { card, allCards, lists, boardLabels, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel, onAddRelation, onRemoveRelation, onSelectCard, onAddChecklist, onUpdateChecklist, onDeleteChecklist, onAddChecklistItem, onUpdateChecklistItem, onDeleteChecklistItem, onAddAttachment, onUpdateAttachment, onDeleteAttachment, onAddComment, onUpdateComment, onDeleteComment } = props;
+  const { card, allCards, lists, boardLabels, boardMembers, isOpen, onOpenChange, onUpdateCard, onDeleteCard, onMoveCard, onToggleLabelOnCard, onCreateLabel, onUpdateLabel, onAddRelation, onRemoveRelation, onSelectCard, onAddChecklist, onUpdateChecklist, onDeleteChecklist, onAddChecklistItem, onUpdateChecklistItem, onDeleteChecklistItem, onAddAttachment, onUpdateAttachment, onDeleteAttachment, onAddComment, onUpdateComment, onDeleteComment } = props;
   const { session } = useAuth();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [showDates, setShowDates] = useState(false);
   const [renamingAttachment, setRenamingAttachment] = useState<AttachmentType | null>(null);
   const [newAttachmentName, setNewAttachmentName] = useState('');
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
+  const [mentionPopoverOpen, setMentionPopoverOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const cardForm = useForm<z.infer<typeof cardFormSchema>>({
     resolver: zodResolver(cardFormSchema),
@@ -172,6 +179,43 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
     setRenamingAttachment(null);
   };
 
+  const handleMentionSelect = (member: BoardMember) => {
+    const textarea = commentTextareaRef.current;
+    if (!textarea) return;
+
+    const currentContent = textarea.value;
+    const atIndex = currentContent.lastIndexOf('@', textarea.selectionStart);
+    
+    if (atIndex === -1) return;
+
+    const displayName = member.user.full_name || member.user.email || 'User';
+    const mentionText = `@[${displayName}](user:${member.user_id}) `;
+    
+    const newContent = currentContent.substring(0, atIndex) + mentionText + currentContent.substring(textarea.selectionStart);
+    
+    commentForm.setValue('content', newContent);
+    setMentionPopoverOpen(false);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = atIndex + mentionText.length;
+    }, 0);
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const selectionStart = e.target.selectionStart;
+    const lastAt = value.lastIndexOf('@', selectionStart - 1);
+
+    if (lastAt !== -1 && !/\s/.test(value.substring(lastAt + 1, selectionStart))) {
+      setMentionQuery(value.substring(lastAt + 1, selectionStart));
+      setMentionPopoverOpen(true);
+    } else {
+      setMentionPopoverOpen(false);
+    }
+    commentForm.setValue('content', value);
+  };
+
   const { style: coverStyle } = getCoverStyle(card.cover_config);
   const dueDate = cardForm.watch('due_date');
   const isCompleted = card.is_completed;
@@ -216,7 +260,27 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                           <div className="flex items-start gap-3">
                             <Avatar className="h-8 w-8"><AvatarImage src={session?.user?.user_metadata?.avatar_url} /><AvatarFallback>{session?.user?.email?.[0].toUpperCase()}</AvatarFallback></Avatar>
                             <div className="flex-grow">
-                              <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
+                              <Popover open={mentionPopoverOpen} onOpenChange={setMentionPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                  <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} ref={commentTextareaRef} onChange={handleCommentChange} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-0" align="start">
+                                  <Command>
+                                    <CommandInput placeholder="Mention user..." value={mentionQuery} onValueChange={setMentionQuery} />
+                                    <CommandList>
+                                      <CommandEmpty>No user found.</CommandEmpty>
+                                      <CommandGroup>
+                                        {boardMembers.filter(m => (m.user.full_name || m.user.email || '').toLowerCase().includes(mentionQuery.toLowerCase())).map(member => (
+                                          <CommandItem key={member.user_id} onSelect={() => handleMentionSelect(member)}>
+                                            <Avatar className="h-6 w-6 mr-2"><AvatarImage src={member.user.avatar_url || undefined} /><AvatarFallback>{member.user.full_name?.[0] || member.user.email?.[0] || 'U'}</AvatarFallback></Avatar>
+                                            <span>{member.user.full_name || member.user.email}</span>
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
                               <div className="flex items-center gap-2 mt-2">
                                 <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
                                 {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
@@ -233,7 +297,9 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                                   <p className="font-semibold text-sm">{comment.user?.full_name || 'Anonymous'}</p>
                                   <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
                                 </div>
-                                <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">{comment.content}</div>
+                                <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">
+                                  <CommentRenderer content={comment.content} />
+                                </div>
                                 {comment.user_id === session?.user?.id && (
                                   <div className="flex gap-2 mt-1">
                                     <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { setEditingComment(comment); commentForm.setValue('content', comment.content); }}>Edit</Button>

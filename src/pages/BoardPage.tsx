@@ -23,7 +23,7 @@ import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
 
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
-  const { session } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [board, setBoard] = useState<BoardType | null>(null);
@@ -31,7 +31,7 @@ const BoardPage = () => {
   const [modalCardId, setModalCardId] = useState<string | null>(null);
 
   const getBoardData = useCallback(async () => {
-    if (!session?.user || !boardId) return;
+    if (!boardId) return;
 
     const { data: fullBoardData, error } = await supabase
       .from('boards')
@@ -42,6 +42,7 @@ const BoardPage = () => {
         is_closed,
         user_id,
         labels (*),
+        members:board_members(*, user:users(id, full_name, avatar_url, email)),
         lists (
           id, title, position, board_id,
           cards (
@@ -55,7 +56,7 @@ const BoardPage = () => {
               items:checklist_items(*)
             ),
             attachments:card_attachments(*),
-            comments:card_comments(*, user:users(id, full_name, avatar_url))
+            comments:card_comments(*, user:users(id, full_name, avatar_url, email))
           )
         )
       `)
@@ -72,6 +73,7 @@ const BoardPage = () => {
     const boardWithMappedData: BoardType = {
       ...fullBoardData,
       is_closed: fullBoardData.is_closed,
+      members: fullBoardData.members || [],
       lists: fullBoardData.lists.map(list => ({
         ...list,
         cards: list.cards.map((card: any) => {
@@ -98,13 +100,11 @@ const BoardPage = () => {
     };
     setBoard(boardWithMappedData);
     setLoading(false);
-  }, [boardId, session, navigate]);
+  }, [boardId, navigate]);
 
   useEffect(() => {
-    if (session) {
-      getBoardData();
-    }
-  }, [session, boardId, getBoardData]);
+    getBoardData();
+  }, [boardId, getBoardData]);
 
   // Realtime subscription
   useEffect(() => {

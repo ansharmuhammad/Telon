@@ -74,6 +74,13 @@ export type UserProfile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  email?: string | null;
+};
+
+export type BoardMember = {
+  user_id: string;
+  role: string;
+  user: UserProfile;
 };
 
 export type Comment = {
@@ -117,4 +124,5 @@ export type Board = {
   is_closed: boolean;
   lists: List[];
   labels: Label[];
+  members: BoardMember[];
 };
