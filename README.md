@@ -17,15 +17,113 @@ This project is a feature-rich clone of Trello, built from the ground up using a
 
 ---
 
-## Tech Stack
+## Diagrams
 
--   **Frontend**: React, TypeScript, Vite
--   **Styling**: Tailwind CSS with shadcn/ui components
--   **Backend & Database**: Supabase (Auth, Postgres Database, Storage, Edge Functions)
--   **Routing**: React Router
--   **State Management**: `useState` / `useContext` for local state, with Supabase's real-time subscriptions keeping data fresh.
--   **Drag & Drop**: `@atlaskit/pragmatic-drag-and-drop`
--   **Testing**: Vitest & React Testing Library
+### Tech Stack
+
+```mermaid
+graph TD
+    A[Trello Clone Project] --> B{Frontend};
+    A --> C{Backend};
+    A --> D{Styling};
+    A --> E{Testing};
+
+    subgraph Frontend
+        B --> B1[React];
+        B --> B2[TypeScript];
+        B --> B3[Vite];
+        B --> B4[React Router];
+    end
+
+    subgraph Backend
+        C --> C1[Supabase];
+        C1 --> C1a[Postgres DB];
+        C1 --> C1b[Auth];
+        C1 --> C1c[Storage];
+        C1 --> C1d[Edge Functions];
+    end
+
+    subgraph Styling
+        D --> D1[Tailwind CSS];
+        D --> D2[shadcn/ui];
+    end
+
+    subgraph Testing
+        E --> E1[Vitest];
+        E --> E2[React Testing Library];
+    end
+```
+
+### Infrastructure
+
+```mermaid
+graph TD
+    User[End User] --> FE[React Frontend];
+
+    subgraph Hosting
+        FE
+    end
+
+    subgraph Supabase Platform
+        Auth[Auth]
+        DB[Postgres Database]
+        Storage[File Storage]
+        Functions[Edge Functions]
+    end
+    
+    FE --> Auth;
+    FE --> DB;
+    FE --> Storage;
+    FE --> Functions;
+
+    Functions --> Unsplash[Unsplash API];
+
+    DB -- Realtime --> FE;
+```
+
+### Code Structure
+
+```mermaid
+graph TD
+    App[App.tsx] --> AuthProvider[AuthProvider];
+    App --> Router[BrowserRouter];
+
+    Router --> Route_Home[Route: /];
+    Router --> Route_Dashboard[Route: /dashboard];
+    Router --> Route_Board[Route: /board/:id];
+    Router --> Route_Login[Route: /login];
+
+    Route_Dashboard --> DashboardPage[Dashboard Page];
+    Route_Board --> BoardPage[Board Page];
+    Route_Login --> LoginPage[Login Page];
+
+    BoardPage --> Header[Header Component];
+    BoardPage --> TrelloBoard[TrelloBoard Component];
+    
+    TrelloBoard --> TrelloList[TrelloList Component];
+    TrelloBoard --> CardDetailsModal[CardDetailsModal];
+
+    TrelloList --> TrelloCard[TrelloCard Component];
+```
+
+### Data Flow (Real-time Update)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactApp as React App
+    participant SupabaseAPI as Supabase API
+    participant SupabaseDB as Supabase DB
+    participant Realtime as Supabase Realtime
+
+    User->>ReactApp: Drags and drops a card
+    ReactApp->>ReactApp: 1. Optimistic UI Update (move card in local state)
+    ReactApp->>SupabaseAPI: 2. Update card position (RPC call)
+    SupabaseAPI->>SupabaseDB: 3. Persist change in database
+    SupabaseDB-->>Realtime: 4. Database change triggers event
+    Realtime-->>ReactApp: 5. Broadcasts event to all clients
+    ReactApp->>ReactApp: 6. Listener refetches board data for consistency
+```
 
 ---
 
