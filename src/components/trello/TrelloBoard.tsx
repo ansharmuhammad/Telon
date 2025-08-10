@@ -445,12 +445,38 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
   const handleAddComment = async (cardId: string, content: string) => {
     if (!session?.user) return;
-    const { data, error } = await supabase.from('card_comments').insert({ card_id: cardId, user_id: session.user.id, content }).select('*, user:users(id, full_name, avatar_url)').single();
+    
+    const { data: insertedComment, error } = await supabase
+      .from('card_comments')
+      .insert({ card_id: cardId, user_id: session.user.id, content })
+      .select()
+      .single();
+
     if (error) {
       showError('Failed to add comment.');
-    } else {
-      setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, comments: [data as Comment, ...c.comments] } : c) })) }));
+      return;
     }
+
+    const newCommentForUI: Comment = {
+      ...insertedComment,
+      user: {
+        id: session.user.id,
+        full_name: session.user.user_metadata?.full_name || session.user.email,
+        avatar_url: session.user.user_metadata?.avatar_url,
+      }
+    };
+
+    setBoard(b => ({
+      ...b,
+      lists: b.lists.map(l => ({
+        ...l,
+        cards: l.cards.map(c => 
+          c.id === cardId 
+            ? { ...c, comments: [newCommentForUI, ...c.comments] } 
+            : c
+        )
+      }))
+    }));
   };
 
   const handleUpdateComment = async (commentId: string, content: string) => {

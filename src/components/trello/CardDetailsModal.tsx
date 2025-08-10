@@ -125,6 +125,7 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
     if (list_id !== card.list_id) {
       await onMoveCard(card.id, list_id);
     }
+    onOpenChange(false);
   };
 
   const onCommentSubmit = async (values: z.infer<typeof commentFormSchema>) => {
@@ -185,7 +186,7 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
           {card.cover_config && <div style={coverStyle} className="h-32 w-full rounded-t-lg bg-cover bg-center" />}
           <div className="p-6 pt-4">
             <Form {...cardForm}>
-              <form onBlur={cardForm.handleSubmit(onCardSubmit)} className="space-y-4">
+              <form onSubmit={cardForm.handleSubmit(onCardSubmit)} className="space-y-4">
                 <DialogHeader className="pr-8">
                   <DialogTitle className="sr-only">Editing Card: {card.content}</DialogTitle>
                   <DialogDescription className="sr-only">Modify card details, add attachments, checklists, and more.</DialogDescription>
@@ -226,10 +227,10 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                         <div className="space-y-4">
                           {card.comments.map(comment => (
                             <div key={comment.id} className="flex items-start gap-3">
-                              <Avatar className="h-8 w-8"><AvatarImage src={comment.user.avatar_url || undefined} /><AvatarFallback>{comment.user.full_name?.[0] || 'U'}</AvatarFallback></Avatar>
+                              <Avatar className="h-8 w-8"><AvatarImage src={comment.user?.avatar_url || undefined} /><AvatarFallback>{comment.user?.full_name?.[0] || 'U'}</AvatarFallback></Avatar>
                               <div className="flex-grow">
                                 <div className="flex items-baseline gap-2">
-                                  <p className="font-semibold text-sm">{comment.user.full_name || 'Anonymous'}</p>
+                                  <p className="font-semibold text-sm">{comment.user?.full_name || 'Anonymous'}</p>
                                   <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
                                 </div>
                                 <div className="text-sm bg-gray-100 p-2 rounded-md mt-1">{comment.content}</div>
@@ -262,7 +263,8 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" onClick={() => onOpenChange(false)}>Close</Button>
+                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="submit">Save Changes</Button>
                 </DialogFooter>
               </form>
             </Form>
