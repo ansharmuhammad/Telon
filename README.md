@@ -1,8 +1,8 @@
-# Trello Clone - A Real-Time Task Management Board
+# TELON - A Real-Time Task Management Board
 
-This project is a feature-rich clone of Trello, built from the ground up using a modern web stack. It provides a real-time, collaborative, and interactive platform for managing tasks and projects, powered by React on the frontend and Supabase for all backend services.
+This project is a feature-rich clone of Trello, now named **TELON**, built from the ground up using a modern web stack. It provides a real-time, collaborative, and interactive platform for managing tasks and projects, powered by React on the frontend and Supabase for all backend services.
 
-![Trello Clone Screenshot](https://raw.githubusercontent.com/supabase/supabase/master/examples/trello-clone/docs/trello-clone.png)
+![TELON Screenshot](https://raw.githubusercontent.com/supabase/supabase/master/examples/trello-clone/docs/trello-clone.png)
 
 ## Key Features
 
@@ -17,68 +17,52 @@ This project is a feature-rich clone of Trello, built from the ground up using a
 
 ---
 
+## Tech Stack
+
+-   **Frontend**: React, TypeScript, Vite
+-   **Styling**: Tailwind CSS with shadcn/ui components
+-   **Backend & Database**: Supabase (Auth, Postgres Database, Storage, Edge Functions)
+-   **Routing**: React Router
+-   **State Management**: `useState` / `useContext` for local state, with Supabase's real-time subscriptions keeping data fresh.
+-   **Drag & Drop**: `@atlaskit/pragmatic-drag-and-drop`
+-   **Testing**: Vitest & React Testing Library
+
+---
+
 ## Diagrams
-
-### Tech Stack
-
-```mermaid
-graph TD
-    A[Trello Clone Project] --> B{Frontend};
-    A --> C{Backend};
-    A --> D{Styling};
-    A --> E{Testing};
-
-    subgraph Frontend
-        B --> B1[React];
-        B --> B2[TypeScript];
-        B --> B3[Vite];
-        B --> B4[React Router];
-    end
-
-    subgraph Backend
-        C --> C1[Supabase];
-        C1 --> C1a[Postgres DB];
-        C1 --> C1b[Auth];
-        C1 --> C1c[Storage];
-        C1 --> C1d[Edge Functions];
-    end
-
-    subgraph Styling
-        D --> D1[Tailwind CSS];
-        D --> D2[shadcn/ui];
-    end
-
-    subgraph Testing
-        E --> E1[Vitest];
-        E --> E2[React Testing Library];
-    end
-```
 
 ### Infrastructure
 
 ```mermaid
-graph TD
-    User[End User] --> FE[React Frontend];
-
-    subgraph Hosting
-        FE
-    end
-
-    subgraph Supabase Platform
-        Auth[Auth]
-        DB[Postgres Database]
-        Storage[File Storage]
-        Functions[Edge Functions]
-    end
+architecture
+    actor "User" as user
     
-    FE --> Auth;
-    FE --> DB;
-    FE --> Storage;
-    FE --> Functions;
+    boundary "Web Browser" {
+        component "TELON Frontend" as fe {
+            description "React (Vite + TS)"
+        }
+    }
 
-    Functions --> Unsplash[Unsplash API];
+    boundary "Supabase Cloud" {
+        component "Auth" as supabase_auth
+        component "Database" as supabase_db {
+            description "PostgreSQL"
+        }
+        component "Storage" as supabase_storage
+        component "Edge Functions" as supabase_functions
+    }
 
-    DB -- Realtime --> FE;
+    boundary "External Services" {
+        component "Unsplash API" as unsplash
+    }
+
+    user -> fe : "Uses the app"
+    fe -> supabase_auth : "Handles login/signup"
+    fe -> supabase_db : "Reads/Writes board data (REST)"
+    supabase_db -> fe : "Sends real-time updates (WebSockets)"
+    fe -> supabase_storage : "Uploads/Downloads images"
+    fe -> supabase_functions : "Invokes server-side logic"
+    supabase_functions -> unsplash : "Searches for images"
 ```
 
 ### Code Structure
