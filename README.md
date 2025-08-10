@@ -34,35 +34,33 @@ This project is a feature-rich clone of Trello, now named **TELON**, built from 
 ### Infrastructure
 
 ```mermaid
-architecture
-    actor "User" as user
-    
-    boundary "Web Browser" {
-        component "TELON Frontend" as fe {
-            description "React (Vite + TS)"
-        }
-    }
+graph TD
+    subgraph "User"
+        U[End User]
+    end
 
-    boundary "Supabase Cloud" {
-        component "Auth" as supabase_auth
-        component "Database" as supabase_db {
-            description "PostgreSQL"
-        }
-        component "Storage" as supabase_storage
-        component "Edge Functions" as supabase_functions
-    }
+    subgraph "Browser"
+        FE[/"TELON Frontend (React, Vite)"/]
+    end
 
-    boundary "External Services" {
-        component "Unsplash API" as unsplash
-    }
+    subgraph "Supabase Cloud"
+        Auth[Auth]
+        DB[("Postgres DB")]
+        Store[Storage]
+        Func[Edge Functions]
+    end
 
-    user -> fe : "Uses the app"
-    fe -> supabase_auth : "Handles login/signup"
-    fe -> supabase_db : "Reads/Writes board data (REST)"
-    supabase_db -> fe : "Sends real-time updates (WebSockets)"
-    fe -> supabase_storage : "Uploads/Downloads images"
-    fe -> supabase_functions : "Invokes server-side logic"
-    supabase_functions -> unsplash : "Searches for images"
+    subgraph "External Services"
+        Unsplash[Unsplash API]
+    end
+
+    U -- Interacts with --> FE
+    FE -- REST & Auth --> Auth
+    FE -- REST API --> DB
+    FE -- REST API --> Store
+    FE -- REST API --> Func
+    DB -- Real-time Websockets --> FE
+    Func -- HTTP Request --> Unsplash
 ```
 
 ### Code Structure
