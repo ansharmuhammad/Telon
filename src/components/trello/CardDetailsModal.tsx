@@ -213,16 +213,16 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                       <div className="flex items-center gap-4"><MessageSquare className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Comments</h3></div>
                       <div className="pl-9 space-y-4">
                         <Form {...commentForm}>
-                          <form onSubmit={editingComment ? commentForm.handleSubmit(onCommentUpdateSubmit) : commentForm.handleSubmit(onCommentSubmit)} className="flex items-start gap-3">
+                          <div className="flex items-start gap-3">
                             <Avatar className="h-8 w-8"><AvatarImage src={session?.user?.user_metadata?.avatar_url} /><AvatarFallback>{session?.user?.email?.[0].toUpperCase()}</AvatarFallback></Avatar>
                             <div className="flex-grow">
                               <FormField control={commentForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Textarea {...field} placeholder="Write a comment..." className="min-h-[60px]" /></FormControl></FormItem>)} />
                               <div className="flex items-center gap-2 mt-2">
-                                <Button type="submit" size="sm">{editingComment ? 'Save' : 'Comment'}</Button>
+                                <Button type="button" size="sm" onClick={commentForm.handleSubmit(editingComment ? onCommentUpdateSubmit : onCommentSubmit)}>{editingComment ? 'Save' : 'Comment'}</Button>
                                 {editingComment && <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingComment(null); commentForm.reset(); }}>Cancel</Button>}
                               </div>
                             </div>
-                          </form>
+                          </div>
                         </Form>
                         <div className="space-y-4">
                           {card.comments.map(comment => (
