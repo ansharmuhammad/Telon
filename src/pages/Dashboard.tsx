@@ -42,7 +42,8 @@ const Dashboard = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('boards')
-      .select('id, name, background_config, is_closed')
+      .select('id, name, background_config, is_closed, board_members!inner(*)')
+      .eq('board_members.user_id', session.user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
