@@ -36,6 +36,7 @@ const Dashboard = () => {
   const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBoardName, setNewBoardName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchBoards = useCallback(async () => {
     if (!session?.user) return;
@@ -61,26 +62,21 @@ const Dashboard = () => {
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBoardName.trim() || !session?.user) return;
+    if (!newBoardName.trim() || !session?.user || isCreating) return;
+    setIsCreating(true);
 
-    const { data: newBoard, error } = await supabase
-      .from('boards')
-      .insert({ name: newBoardName.trim() })
-      .select('id')
-      .single();
+    const { data: newBoardId, error } = await supabase.rpc('create_board_with_lists', {
+      board_name: newBoardName.trim()
+    });
 
     if (error) {
       showError(`Failed to create board: ${error.message}`);
-    } else if (newBoard) {
-      await supabase.from('lists').insert([
-        { board_id: newBoard.id, title: 'To Do', position: 1 },
-        { board_id: newBoard.id, title: 'In Progress', position: 2 },
-        { board_id: newBoard.id, title: 'Done', position: 3 },
-      ]);
+    } else if (newBoardId) {
       showSuccess('Board created!');
       setNewBoardName('');
-      navigate(`/board/${newBoard.id}`);
+      navigate(`/board/${newBoardId}`);
     }
+    setIsCreating(false);
   };
 
   const handleReopenBoard = async (boardId: string) => {
@@ -150,9 +146,10 @@ const Dashboard = () => {
                     placeholder="New board name..."
                     value={newBoardName}
                     onChange={(e) => setNewBoardName(e.target.value)}
+                    disabled={isCreating}
                   />
-                  <Button type="submit" disabled={!newBoardName.trim()}>
-                    <Plus className="h-4 w-4 mr-2" /> Create
+                  <Button type="submit" disabled={!newBoardName.trim() || isCreating}>
+                    {isCreating ? 'Creating...' : <><Plus className="h-4 w-4 mr-2" /> Create</>}
                   </Button>
                 </form>
               </CardContent>
