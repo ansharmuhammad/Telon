@@ -123,11 +123,29 @@ const BoardPage = () => {
   useEffect(() => {
     if (!boardId) return;
 
-    const channel = supabase.channel(`board-changes:${boardId}`)
-      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-        console.log('Change received!', payload);
-        getBoardData();
-      })
+    const handleDbChange = (payload: any) => {
+      console.log('Change received!', payload);
+      getBoardData();
+    };
+
+    const channel = supabase.channel(`board-changes:${boardId}`);
+    
+    // We listen to changes on all tables that can affect the board's appearance.
+    // For tables with a direct board_id, we can filter. For nested tables (like cards),
+    // we listen to all changes and let the getBoardData refetch handle showing the correct data.
+    // This is a balance between performance and implementation simplicity.
+    channel
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boards', filter: `id=eq.${boardId}` }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lists', filter: `board_id=eq.${boardId}` }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'labels', filter: `board_id=eq.${boardId}` }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_members', filter: `board_id=eq.${boardId}` }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_labels' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_items' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_attachments' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_comments' }, handleDbChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_relations' }, handleDbChange)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log(`Realtime subscribed for board ${boardId}`);
