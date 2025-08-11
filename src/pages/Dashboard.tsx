@@ -118,7 +118,10 @@ const Dashboard = () => {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
+            <div className="flex items-center gap-3">
+              <img src="/telon_logo_48x48.png" alt="TELON Logo" className="h-10 w-10" />
+              <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
+            </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
               <Button variant="outline" onClick={() => supabase.auth.signOut()}>

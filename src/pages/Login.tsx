@@ -45,9 +45,12 @@ const Login = () => {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50 py-12">
       <div className="w-full max-w-md mx-4 space-y-8">
+        <div className="flex justify-center">
+          <img src="/telon_logo_64x64.png" alt="TELON Logo" className="h-16 w-16" />
+        </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-center text-2xl">Welcome to Trello Clone</CardTitle>
+            <CardTitle className="text-center text-2xl">Welcome to TELON</CardTitle>
             <CardDescription className="text-center">Sign in or sign up to continue</CardDescription>
           </CardHeader>
           <CardContent>

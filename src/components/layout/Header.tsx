@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, Home, MoreHorizontal, X } from 'lucide-react';
+import { LogOut, MoreHorizontal, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChangeBackgroundButton } from './ChangeBackgroundButton';
 import { Board, BackgroundConfig } from '@/types/trello';
@@ -55,10 +55,8 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
   return (
     <header className="flex items-center justify-between p-2 bg-gray-900/80 backdrop-blur-sm text-white">
       <div className="flex items-center gap-4">
-        <Link to="/dashboard">
-          <Button variant="ghost" className="hover:bg-gray-700">
-            <Home className="h-4 w-4" />
-          </Button>
+        <Link to="/dashboard" className="flex items-center gap-2 hover:bg-gray-700 rounded-md p-1">
+          <img src="/telon_logo_32x32.png" alt="TELON Logo" className="h-8 w-8" />
         </Link>
         {board && (
           isEditingTitle ? (
