@@ -7,6 +7,10 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be defined in your .env file");
 }
 
+if (!SUPABASE_URL.startsWith('http')) {
+  throw new Error(`Invalid Supabase URL. It must start with 'http'. Received: ${SUPABASE_URL}`);
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
