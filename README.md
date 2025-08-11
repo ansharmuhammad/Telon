@@ -111,23 +111,6 @@ sequenceDiagram
 
 ---
 
-## Project Flow
-
-The application's architecture is designed to be simple yet powerful, leveraging Supabase for most of the heavy lifting.
-
-1.  **Authentication**: A user can either sign up/log in or create a public board without an account. The `AuthContext` manages the user's session and protects routes.
-2.  **Dashboard**: Authenticated users land on a dashboard where they can see their boards or create new ones.
-3.  **Board View**: When a board is selected, the user navigates to the `BoardPage`.
-    -   **Data Fetching**: `BoardPage` makes a single, comprehensive query to Supabase to fetch the board, its lists, cards, labels, members, and all nested data in one go.
-    -   **Real-time Subscription**: A Supabase Realtime channel is subscribed to for the specific board. Any change in the database (e.g., another user moving a card) triggers an event that causes the `BoardPage` to refetch its data, ensuring the UI is always up-to-date.
-4.  **User Interaction**:
-    -   When a user performs an action (e.g., dragging a card, adding a comment), the client-side handler in `TrelloBoard.tsx` is invoked.
-    -   The handler first performs an **optimistic UI update**. It modifies the local state immediately to make the application feel instantaneous.
-    -   It then sends the update request to the Supabase API.
-    -   If the API call fails, the optimistic update is reverted, and an error toast is shown. If it succeeds, the change is persisted, and the real-time event (which is also received by the user who made the change) ensures final data consistency.
-
----
-
 ## Setup and Installation
 
 Follow these steps to get the project running locally.
@@ -156,7 +139,8 @@ Follow these steps to get the project running locally.
     -   Click **RUN**.
 
     ```sql
-    -- Create Tables
+    -- 1. Create Tables
+
     CREATE TABLE public.users (
         id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
         full_name text,
@@ -166,7 +150,7 @@ Follow these steps to get the project running locally.
 
     CREATE TABLE public.boards (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+        user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid(),
         name text NOT NULL,
         background_config jsonb,
         is_closed boolean NOT NULL DEFAULT false,
@@ -267,37 +251,19 @@ Follow these steps to get the project running locally.
         created_at timestamp with time zone NOT NULL DEFAULT now()
     );
 
-    -- Create Storage Buckets
-    -- You must do this manually in the Supabase Dashboard under Storage.
-    -- Create a bucket named `board-backgrounds` with public access.
-    -- Create a bucket named `card-attachments` with public access.
-    -- Create a bucket named `card-covers` with public access.
-    -- For production, you would want to set up proper RLS policies on these buckets.
+    -- 2. Create Helper Functions
 
-    -- Create Functions
     CREATE OR REPLACE FUNCTION public.handle_new_user()
-    RETURNS trigger
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-    AS $$
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
     BEGIN
       INSERT INTO public.users (id, email, full_name, avatar_url)
-      VALUES (
-        NEW.id,
-        NEW.email,
-        NEW.raw_user_meta_data->>'full_name',
-        NEW.raw_user_meta_data->>'avatar_url'
-      );
+      VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'avatar_url');
       RETURN NEW;
     END;
     $$;
 
     CREATE OR REPLACE FUNCTION public.add_board_creator_as_admin()
-    RETURNS trigger
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
     BEGIN
       IF NEW.user_id IS NOT NULL THEN
         INSERT INTO public.board_members (board_id, user_id, role)
@@ -307,7 +273,38 @@ Follow these steps to get the project running locally.
     END;
     $$;
 
-    -- Create Triggers
+    CREATE OR REPLACE FUNCTION public.is_board_member(p_board_id uuid)
+    RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
+    BEGIN
+      RETURN EXISTS (
+        SELECT 1 FROM public.board_members bm
+        WHERE bm.board_id = p_board_id AND bm.user_id = auth.uid()
+      );
+    END;
+    $$;
+
+    CREATE OR REPLACE FUNCTION public.is_board_admin(p_board_id uuid)
+    RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+    BEGIN
+      RETURN EXISTS (
+        SELECT 1 FROM board_members
+        WHERE board_id = p_board_id AND user_id = auth.uid() AND role = 'admin'
+      );
+    END;
+    $$;
+
+    CREATE OR REPLACE FUNCTION public.is_board_public(p_board_id uuid)
+    RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+    BEGIN
+      RETURN EXISTS (
+        SELECT 1 FROM boards
+        WHERE id = p_board_id AND user_id IS NULL
+      );
+    END;
+    $$;
+
+    -- 3. Create Triggers
+
     CREATE TRIGGER on_auth_user_created
       AFTER INSERT ON auth.users
       FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -316,7 +313,7 @@ Follow these steps to get the project running locally.
       AFTER INSERT ON public.boards
       FOR EACH ROW EXECUTE FUNCTION public.add_board_creator_as_admin();
 
-    -- Enable Row Level Security (RLS) on all tables
+    -- 4. Enable Row Level Security (RLS) on all tables
     ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.boards ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.board_members ENABLE ROW LEVEL SECURITY;
@@ -331,33 +328,53 @@ Follow these steps to get the project running locally.
     ALTER TABLE public.card_relations ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
-    -- Create RLS Policies
-    -- (This is a simplified set of policies for demonstration. Production apps may need more granular rules.)
+    -- 5. Create RLS Policies
+
+    -- Users Table
     CREATE POLICY "Public user data is viewable by everyone." ON public.users FOR SELECT USING (true);
     CREATE POLICY "Users can update their own data." ON public.users FOR UPDATE USING (auth.uid() = id);
 
-    CREATE POLICY "Allow board creation" ON public.boards FOR INSERT WITH CHECK (true);
-    CREATE POLICY "Allow viewing of public or member boards" ON public.boards FOR SELECT USING (user_id IS NULL OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid())));
-    CREATE POLICY "Admins can update board" ON public.boards FOR UPDATE USING ((EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid() AND board_members.role = 'admin')));
-    CREATE POLICY "Admins can delete board" ON public.boards FOR DELETE USING ((EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid() AND board_members.role = 'admin')));
+    -- Boards Table
+    CREATE POLICY "Users can create their own boards" ON public.boards FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
+    CREATE POLICY "Allow viewing of public or member boards" ON public.boards FOR SELECT TO authenticated USING (user_id IS NULL OR (EXISTS (SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid())));
+    CREATE POLICY "Admins can update board" ON public.boards FOR UPDATE TO authenticated USING ((EXISTS (SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid() AND board_members.role = 'admin')));
+    CREATE POLICY "Admins can delete board" ON public.boards FOR DELETE TO authenticated USING ((EXISTS (SELECT 1 FROM board_members WHERE board_members.board_id = boards.id AND board_members.user_id = auth.uid() AND board_members.role = 'admin')));
 
-    CREATE POLICY "Members can view other members" ON public.board_members FOR SELECT USING ((EXISTS ( SELECT 1 FROM board_members bm WHERE bm.board_id = board_members.board_id AND bm.user_id = auth.uid())));
-    CREATE POLICY "Admins can manage members" ON public.board_members FOR ALL USING ((EXISTS ( SELECT 1 FROM board_members bm WHERE bm.board_id = board_members.board_id AND bm.user_id = auth.uid() AND bm.role = 'admin')));
+    -- Board Members Table
+    CREATE POLICY "Members can view other members" ON public.board_members FOR SELECT USING (is_board_member(board_id));
+    CREATE POLICY "Admins can manage members" ON public.board_members FOR ALL USING (is_board_admin(board_id));
 
-    CREATE POLICY "Members or public can manage lists" ON public.lists FOR ALL USING (board_id IN (SELECT id FROM boards WHERE user_id IS NULL) OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = lists.board_id AND board_members.user_id = auth.uid())));
-    CREATE POLICY "Members or public can manage cards" ON public.cards FOR ALL USING (list_id IN (SELECT id FROM lists WHERE board_id IN (SELECT id FROM boards WHERE user_id IS NULL)) OR (EXISTS ( SELECT 1 FROM board_members bm JOIN lists l ON bm.board_id = l.board_id WHERE l.id = cards.list_id AND bm.user_id = auth.uid())));
-    -- (Repeat similar broad policies for all other card-related tables: labels, comments, checklists, etc.)
-    CREATE POLICY "Allow all access to card related tables for board members or public boards" ON public.card_labels FOR ALL USING (card_id IN (SELECT id FROM cards WHERE list_id IN (SELECT id FROM lists WHERE board_id IN (SELECT id FROM boards WHERE user_id IS NULL) OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = lists.board_id AND board_members.user_id = auth.uid())))));
-    CREATE POLICY "Allow all access to labels for board members or public boards" ON public.labels FOR ALL USING (board_id IN (SELECT id FROM boards WHERE user_id IS NULL) OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = labels.board_id AND board_members.user_id = auth.uid())));
-    CREATE POLICY "Allow commenting on accessible cards" ON public.card_comments FOR INSERT WITH CHECK (card_id IN (SELECT id FROM cards WHERE list_id IN (SELECT id FROM lists WHERE board_id IN (SELECT id FROM boards WHERE user_id IS NULL) OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = lists.board_id AND board_members.user_id = auth.uid())))));
-    CREATE POLICY "Allow viewing comments on accessible cards" ON public.card_comments FOR SELECT USING (card_id IN (SELECT id FROM cards WHERE list_id IN (SELECT id FROM lists WHERE board_id IN (SELECT id FROM boards WHERE user_id IS NULL) OR (EXISTS ( SELECT 1 FROM board_members WHERE board_members.board_id = lists.board_id AND board_members.user_id = auth.uid())))));
-    CREATE POLICY "Users can manage their own comments" ON public.card_comments FOR UPDATE USING (auth.uid() = user_id);
-    CREATE POLICY "Users can manage their own comments" ON public.card_comments FOR DELETE USING (auth.uid() = user_id);
+    -- Lists, Cards, and all related sub-tables
+    CREATE POLICY "Members or public can manage lists" ON public.lists FOR ALL USING (is_board_member(board_id) OR is_board_public(board_id));
+    CREATE POLICY "Members or public can manage cards" ON public.cards FOR ALL USING (is_board_member((SELECT l.board_id FROM lists l WHERE l.id = cards.list_id)) OR is_board_public((SELECT l.board_id FROM lists l WHERE l.id = cards.list_id)));
+    CREATE POLICY "Members or public can manage labels" ON public.labels FOR ALL USING (is_board_member(board_id) OR is_board_public(board_id));
+    CREATE POLICY "Members or public can manage card_labels" ON public.card_labels FOR ALL USING (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_labels.card_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_labels.card_id)));
+    CREATE POLICY "Members or public can manage checklists" ON public.checklists FOR ALL USING (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = checklists.card_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = checklists.card_id)));
+    CREATE POLICY "Members or public can manage checklist_items" ON public.checklist_items FOR ALL USING (is_board_member((SELECT l.board_id FROM checklist_items ci JOIN checklists cl ON ci.checklist_id = cl.id JOIN cards c ON cl.card_id = c.id JOIN lists l ON c.list_id = l.id WHERE ci.id = checklist_items.id)) OR is_board_public((SELECT l.board_id FROM checklist_items ci JOIN checklists cl ON ci.checklist_id = cl.id JOIN cards c ON cl.card_id = c.id JOIN lists l ON c.list_id = l.id WHERE ci.id = checklist_items.id)));
+    CREATE POLICY "Members or public can manage attachments" ON public.card_attachments FOR ALL USING (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_attachments.card_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_attachments.card_id)));
+    CREATE POLICY "Members or public can manage relations" ON public.card_relations FOR ALL USING (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_relations.card1_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_relations.card1_id)));
+
+    -- Comments Table
+    CREATE POLICY "Allow commenting on accessible cards" ON public.card_comments FOR INSERT WITH CHECK (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_comments.card_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_comments.card_id)));
+    CREATE POLICY "Allow viewing comments on accessible cards" ON public.card_comments FOR SELECT USING (is_board_member((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_comments.card_id)) OR is_board_public((SELECT l.board_id FROM cards c JOIN lists l ON c.list_id = l.id WHERE c.id = card_comments.card_id)));
+    CREATE POLICY "Users can update their own comments" ON public.card_comments FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Users can delete their own comments" ON public.card_comments FOR DELETE USING (auth.uid() = user_id);
+
+    -- Notifications Table
     CREATE POLICY "Users can view their own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
     CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
+    CREATE POLICY "Allow users to create notifications" ON public.notifications FOR INSERT WITH CHECK (true);
     ```
 
-4.  **Set up Environment Variables for Edge Functions**:
+4.  **Create Storage Buckets**:
+    -   You must do this manually in the Supabase Dashboard under the **Storage** section.
+    -   Create a bucket named `board-backgrounds` with public access.
+    -   Create a bucket named `card-attachments` with public access.
+    -   Create a bucket named `card-covers` with public access.
+    -   Create a bucket named `avatars` with public access.
+    -   *For production, you would want to set up proper RLS policies on these buckets instead of making them fully public.*
+
+5.  **Set up Environment Variables for Edge Functions**:
     -   This project uses an Edge Function to search the Unsplash API. You need to provide it with an API key.
     -   Go to [Unsplash Developers](https://unsplash.com/developers) and create an account/app to get an access key.
     -   In your Supabase project dashboard, go to **Edge Functions** > **(select your project)** > **Settings** > **Add new secret**.
