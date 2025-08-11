@@ -43,8 +43,7 @@ const Dashboard = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('boards')
-      .select('id, name, background_config, is_closed, board_members!inner(*)')
-      .eq('board_members.user_id', session.user.id)
+      .select('id, name, background_config, is_closed')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -65,10 +64,9 @@ const Dashboard = () => {
     if (!newBoardName.trim() || !session?.user || isCreating) return;
     setIsCreating(true);
 
-    // First request: Create the board, now with explicit user_id
     const { data: newBoard, error: boardError } = await supabase
       .from('boards')
-      .insert({ name: newBoardName.trim(), user_id: session.user.id })
+      .insert({ name: newBoardName.trim() }) // No user_id here
       .select('id')
       .single();
 
@@ -92,7 +90,6 @@ const Dashboard = () => {
         showSuccess('Board created!');
       }
       
-      // Clear input and refresh the board list instead of redirecting
       setNewBoardName('');
       fetchBoards();
     }
