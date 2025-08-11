@@ -2,18 +2,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, MoreHorizontal, X } from 'lucide-react';
+import { LogOut, MoreHorizontal, X, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChangeBackgroundButton } from './ChangeBackgroundButton';
+import { ChangeBackgroundContent } from './ChangeBackgroundContent';
 import { Board, BackgroundConfig } from '@/types/trello';
 import { GlobalSearch } from './GlobalSearch';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +34,8 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
   const navigate = useNavigate();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(board?.name || '');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuView, setMenuView] = useState<'main' | 'background'>('main');
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -50,6 +47,13 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
       onBoardNameChange(title.trim());
     }
     setIsEditingTitle(false);
+  };
+
+  const handleMenuOpenChange = (open: boolean) => {
+    setIsMenuOpen(open);
+    if (!open) {
+      setTimeout(() => setMenuView('main'), 150);
+    }
   };
 
   return (
@@ -82,38 +86,61 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
         <GlobalSearch />
         {board && <InviteUserPopover boardId={board.id} />}
         {board && (
-           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+           <Popover open={isMenuOpen} onOpenChange={handleMenuOpenChange}>
+            <PopoverTrigger asChild>
               <Button variant="ghost" className="hover:bg-gray-700" size="icon">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="p-0">
-                <ChangeBackgroundButton boardId={board.id} onBackgroundChange={onBackgroundChange} />
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                    <X className="mr-2 h-4 w-4" /> Close Board
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to close this board?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You can find and reopen closed boards from your dashboard.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={onCloseBoard}>Close</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-2">
+              {menuView === 'main' && (
+                <div className="space-y-1">
+                  <p className="text-center text-sm font-medium text-muted-foreground pb-1">Menu</p>
+                  <Separator />
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setMenuView('background')}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Change Background
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50 focus:bg-red-50">
+                        <X className="mr-2 h-4 w-4" /> Close Board
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure you want to close this board?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          You can find and reopen closed boards from your dashboard.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={onCloseBoard}>Close</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+              {menuView === 'background' && (
+                <div>
+                  <div className="flex items-center relative pb-2">
+                    <Button variant="ghost" size="icon" className="absolute left-0" onClick={() => setMenuView('main')}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <p className="text-center text-sm font-medium text-muted-foreground flex-grow">Change Background</p>
+                  </div>
+                  <Separator />
+                  <div className="pt-2">
+                    <ChangeBackgroundContent 
+                      boardId={board.id} 
+                      onBackgroundChange={onBackgroundChange}
+                      onClose={() => setIsMenuOpen(false)}
+                    />
+                  </div>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
         <NotificationBell />
         <Button variant="ghost" onClick={handleLogout} className="hover:bg-gray-700">
