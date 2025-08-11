@@ -65,17 +65,39 @@ const Dashboard = () => {
     if (!newBoardName.trim() || !session?.user || isCreating) return;
     setIsCreating(true);
 
-    const { data: newBoardId, error } = await supabase.rpc('create_board_with_lists', {
-      board_name: newBoardName.trim()
-    });
+    // First request: Create the board
+    const { data: newBoard, error: boardError } = await supabase
+      .from('boards')
+      .insert({ name: newBoardName.trim() })
+      .select('id')
+      .single();
 
-    if (error) {
-      showError(`Failed to create board: ${error.message}`);
-    } else if (newBoardId) {
-      showSuccess('Board created!');
-      setNewBoardName('');
-      navigate(`/board/${newBoardId}`);
+    if (boardError) {
+      showError(`Failed to create board: ${boardError.message}`);
+      setIsCreating(false);
+      return;
     }
+
+    if (newBoard) {
+      // Second request: Create the default lists for the new board
+      const { error: listError } = await supabase.from('lists').insert([
+        { board_id: newBoard.id, title: 'To Do', position: 1 },
+        { board_id: newBoard.id, title: 'In Progress', position: 2 },
+        { board_id: newBoard.id, title: 'Done', position: 3 },
+      ]);
+
+      if (listError) {
+        // If lists fail, inform the user. The board will exist but will be empty.
+        showError(`Board created, but failed to add lists: ${listError.message}`);
+        // Still navigate to the (empty) board
+        navigate(`/board/${newBoard.id}`);
+      } else {
+        showSuccess('Board created!');
+        setNewBoardName('');
+        navigate(`/board/${newBoard.id}`);
+      }
+    }
+    
     setIsCreating(false);
   };
 
