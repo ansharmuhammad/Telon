@@ -65,10 +65,10 @@ const Dashboard = () => {
     if (!newBoardName.trim() || !session?.user || isCreating) return;
     setIsCreating(true);
 
-    // First request: Create the board
+    // First request: Create the board, now with explicit user_id
     const { data: newBoard, error: boardError } = await supabase
       .from('boards')
-      .insert({ name: newBoardName.trim() })
+      .insert({ name: newBoardName.trim(), user_id: session.user.id })
       .select('id')
       .single();
 
