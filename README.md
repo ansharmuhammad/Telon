@@ -2,7 +2,9 @@
 
 This project is a feature-rich clone of Trello, now named **TELON**, built from the ground up using a modern web stack. It provides a real-time, collaborative, and interactive platform for managing tasks and projects, powered by React on the frontend and Supabase for all backend services.
 
-![TELON Screenshot](https://raw.githubusercontent.com/supabase/supabase/master/examples/trello-clone/docs/trello-clone.png)
+<p align="center">
+  <img width="460" height="460" src="https://github.com/user-attachments/assets/6d019742-92a2-48ef-87df-3c12cb3c7d29">
+</p>
 
 ## Key Features
 
