@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { BackgroundConfig } from '@/types/trello';
 import { getBackgroundThumbnailStyle } from '@/lib/utils';
@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { UserNav } from '@/components/layout/UserNav';
 
 type BoardSummary = {
   id: string;
@@ -141,10 +142,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <Button variant="outline" onClick={() => supabase.auth.signOut()}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
+              <UserNav />
             </div>
           </div>
         </div>

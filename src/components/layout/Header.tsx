@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { LogOut, MoreHorizontal, X, Image as ImageIcon, ArrowLeft } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { MoreHorizontal, X, Image as ImageIcon, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ChangeBackgroundContent } from './ChangeBackgroundContent';
 import { Board, BackgroundConfig } from '@/types/trello';
 import { GlobalSearch } from './GlobalSearch';
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { InviteUserPopover } from './InviteUserPopover';
 import { NotificationBell } from './NotificationBell';
+import { UserNav } from './UserNav';
 
 type HeaderProps = {
   board: Board | null;
@@ -31,16 +31,10 @@ type HeaderProps = {
 };
 
 export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameChange }: HeaderProps) => {
-  const navigate = useNavigate();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(board?.name || '');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'background'>('main');
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
 
   const handleTitleSubmit = () => {
     if (title.trim() && title !== board?.name) {
@@ -143,10 +137,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
           </Popover>
         )}
         <NotificationBell />
-        <Button variant="ghost" onClick={handleLogout} className="hover:bg-gray-700">
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
+        <UserNav />
       </div>
     </header>
   );
