@@ -65,7 +65,7 @@ const Dashboard = () => {
 
     const { data: newBoard, error } = await supabase
       .from('boards')
-      .insert({ name: newBoardName.trim(), user_id: session.user.id })
+      .insert({ name: newBoardName.trim() })
       .select('id')
       .single();
 
