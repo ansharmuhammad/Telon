@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,6 @@ type BoardSummary = {
 
 const Dashboard = () => {
   const { session } = useAuth();
-  const navigate = useNavigate();
   const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBoardName, setNewBoardName] = useState('');
@@ -87,15 +86,14 @@ const Dashboard = () => {
       ]);
 
       if (listError) {
-        // If lists fail, inform the user. The board will exist but will be empty.
         showError(`Board created, but failed to add lists: ${listError.message}`);
-        // Still navigate to the (empty) board
-        navigate(`/board/${newBoard.id}`);
       } else {
         showSuccess('Board created!');
-        setNewBoardName('');
-        navigate(`/board/${newBoard.id}`);
       }
+      
+      // Clear input and refresh the board list instead of redirecting
+      setNewBoardName('');
+      fetchBoards();
     }
     
     setIsCreating(false);
