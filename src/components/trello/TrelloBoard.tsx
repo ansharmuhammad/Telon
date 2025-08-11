@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { showError, showSuccess } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;
@@ -14,26 +15,37 @@ type TrelloBoardProps = {
   onModalOpenChange: (isOpen: boolean, cardId?: string) => void;
 };
 
-/**
- * The main component for rendering the Trello board interface.
- * It manages the state of the board, lists, and cards, and handles
- * all drag-and-drop logic and API calls for mutations.
- * @param {TrelloBoardProps} props The component props.
- */
 const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
   const { session } = useAuth();
+  const channel = useMemo<RealtimeChannel>(() => supabase.channel(`board-channel:${initialBoard.id}`), [initialBoard.id]);
 
-  // Memoize derived state for performance
+  useEffect(() => {
+    const subscription = channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`TrelloBoard subscribed to channel for broadcasting.`);
+      }
+    });
+    return () => {
+      supabase.removeChannel(subscription);
+    }
+  }, [channel]);
+
+  const broadcastUpdate = () => {
+    channel.send({
+      type: 'broadcast',
+      event: 'board-update',
+      payload: { sender: session?.user.id }
+    });
+  };
+
   const allCards = useMemo(() => board.lists.flatMap(l => l.cards), [board.lists]);
   const modalCard = useMemo(() => allCards.find(c => c.id === modalCardId) || null, [allCards, modalCardId]);
 
-  // Sync local state if the initial board prop changes
   useEffect(() => {
     setBoard(initialBoard);
   }, [initialBoard]);
 
-  // Set up the main drag-and-drop monitor for the board
   useEffect(() => {
     return monitorForElements({
       onDrop: async ({ source, location }) => {
@@ -49,27 +61,17 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
         }
       },
     });
-  }, [board]); // Re-create monitor if board state changes to ensure handlers have latest data
+  }, [board]);
 
-  /**
-   * Handles the drop event for a card.
-   * @param sourceData - Data from the dragged card.
-   * @param destData - Data from the drop target (list or another card).
-   */
   const handleCardDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
     const cardId = sourceData.cardId as string;
     const destListId = destData.listId as string;
-    const destCardId = destData.cardId as string | undefined; // If dropping on another card
+    const destCardId = destData.cardId as string | undefined;
 
-    if (cardId === destCardId) return; // Cannot drop a card on itself
+    if (cardId === destCardId) return;
     await handleMoveCard(cardId, destListId, destCardId);
   };
 
-  /**
-   * Handles the drop event for a list.
-   * @param sourceData - Data from the dragged list.
-   * @param destData - Data from the drop target list.
-   */
   const handleListDrop = async (sourceData: Record<string, unknown>, destData: Record<string, unknown>) => {
     const sourceListId = sourceData.listId as string;
     const destListId = destData.listId as string;
@@ -78,21 +80,12 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     await handleMoveList(sourceListId, undefined, destListId);
   };
 
-  /**
-   * Moves a card to a new position, either in the same list or a new one.
-   * Calculates the new position value based on the positions of the surrounding cards.
-   * @param cardId - The ID of the card to move.
-   * @param newListId - The ID of the destination list.
-   * @param beforeCardId - The ID of the card to insert before. If undefined, moves to the end.
-   */
   const handleMoveCard = async (cardId: string, newListId: string, beforeCardId?: string) => {
-    // Optimistic UI update
     const originalBoard = JSON.parse(JSON.stringify(board));
     let cardToMove: CardType | undefined;
     let sourceListId: string | undefined;
 
     const tempBoard = JSON.parse(JSON.stringify(board));
-    // Find and remove the card from its original list
     for (const list of tempBoard.lists) {
       const cardIndex = list.cards.findIndex((c: CardType) => c.id === cardId);
       if (cardIndex > -1) {
@@ -104,40 +97,32 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
     if (!cardToMove || !sourceListId) return;
 
-    // Add the card to its new list
     const destList = tempBoard.lists.find((l: ListType) => l.id === newListId);
     if (!destList) return;
 
     const destIndex = beforeCardId ? destList.cards.findIndex((c: CardType) => c.id === beforeCardId) : destList.cards.length;
     destList.cards.splice(destIndex, 0, cardToMove);
 
-    // Calculate the new position for the card. This is a common pattern for ordering
-    // items without having to re-index the entire list.
     const cardBefore = destList.cards[destIndex - 1];
     const cardAfter = destList.cards[destIndex + 1];
     const posBefore = cardBefore ? cardBefore.position : 0;
-    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2); // Add a gap
+    const posAfter = cardAfter ? cardAfter.position : (posBefore + 2);
     const newPosition = (posBefore + posAfter) / 2;
 
     cardToMove.position = newPosition;
     cardToMove.list_id = newListId;
 
-    setBoard(tempBoard); // Apply the optimistic update
+    setBoard(tempBoard);
 
-    // Make the API call
     const { error } = await supabase.from('cards').update({ list_id: newListId, position: newPosition }).eq('id', cardId);
     if (error) {
       showError('Failed to move card.');
-      setBoard(originalBoard); // Revert on failure
+      setBoard(originalBoard);
+    } else {
+      broadcastUpdate();
     }
   };
 
-  /**
-   * Moves a list to a new position.
-   * @param listId - The ID of the list to move.
-   * @param direction - 'left' or 'right' for button-based moves.
-   * @param targetListId - The ID of the list to drop onto for drag-and-drop moves.
-   */
   const handleMoveList = async (listId: string, direction?: 'left' | 'right', targetListId?: string) => {
     const originalBoard = JSON.parse(JSON.stringify(board));
     const lists = [...board.lists].sort((a, b) => a.position - b.position);
@@ -174,16 +159,10 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (error) {
       showError('Failed to move list.');
       setBoard(originalBoard);
+    } else {
+      broadcastUpdate();
     }
   };
-
-  // --- CRUD Handlers for Board Items ---
-  // These functions follow a similar pattern:
-  // 1. Make the API call to Supabase.
-  // 2. On success, update the local state to reflect the change.
-  // 3. On failure, show an error toast.
-  // For deletions and updates, optimistic updates could be used, but for simplicity,
-  // we update the state after the API call succeeds.
 
   const handleAddCard = async (listId: string, content: string, afterPosition?: number) => {
     const list = board.lists.find(l => l.id === listId);
@@ -211,6 +190,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else if (newCard) {
       setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: [...l.cards, {...newCard, labels: [], related_cards: [], checklists: [], attachments: [], comments: []}].sort((a, b) => a.position - b.position) } : l) }));
       showSuccess('Card added!');
+      broadcastUpdate();
     }
   };
 
@@ -222,6 +202,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else if (newList) {
       setBoard(b => ({ ...b, lists: [...b.lists, { ...newList, cards: [] }].sort((a,b) => a.position - b.position) }));
       showSuccess('List added!');
+      broadcastUpdate();
     }
   };
 
@@ -236,6 +217,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       } else {
         showSuccess('Card updated!');
       }
+      broadcastUpdate();
     }
   };
 
@@ -249,6 +231,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, cards: l.cards.filter(c => c.id !== cardId) } : l) }));
       showSuccess('Card deleted.');
+      broadcastUpdate();
     }
   };
 
@@ -259,6 +242,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, title } : l) }));
       showSuccess('List updated!');
+      broadcastUpdate();
     }
   };
 
@@ -269,6 +253,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.filter(l => l.id !== listId) }));
       showSuccess('List deleted.');
+      broadcastUpdate();
     }
   };
 
@@ -279,6 +264,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else if (newLabel) {
       setBoard(b => ({ ...b, labels: [...b.labels, newLabel] }));
       showSuccess('Label created!');
+      broadcastUpdate();
     }
   };
 
@@ -289,6 +275,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, labels: b.labels.map(l => l.id === labelId ? { ...l, ...data } : l) }));
       showSuccess('Label updated!');
+      broadcastUpdate();
     }
   };
 
@@ -297,7 +284,6 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     if (!card) return;
     const isApplied = card.labels.some(l => l.id === labelId);
     
-    // Optimistic update for a snappier UI
     const originalBoard = JSON.parse(JSON.stringify(board));
     const tempBoard = JSON.parse(JSON.stringify(board));
     const cardToUpdate = tempBoard.lists.flatMap((l: ListType) => l.cards).find((c: CardType) => c.id === cardId);
@@ -316,20 +302,21 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
 
     if (error) {
       showError('Failed to update label on card.');
-      setBoard(originalBoard); // Revert on failure
+      setBoard(originalBoard);
+    } else {
+      broadcastUpdate();
     }
   };
 
   const handleAddRelation = async (card1Id: string, card2Id: string) => {
-    const [id1, id2] = [card1Id, card2Id].sort(); // Store consistently to prevent duplicates
+    const [id1, id2] = [card1Id, card2Id].sort();
     const { error } = await supabase.from('card_relations').insert({ card1_id: id1, card2_id: id2 });
 
     if (error) {
       showError('Failed to add related card.');
     } else {
-      // This is a complex state update, so we just rely on the realtime subscription
-      // to refetch the data for simplicity. A manual state update would be more performant.
       showSuccess('Related card added.');
+      broadcastUpdate();
     }
   };
 
@@ -341,6 +328,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       showError('Failed to remove related card.');
     } else {
       showSuccess('Related card removed.');
+      broadcastUpdate();
     }
   };
 
@@ -355,6 +343,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       const newChecklist = { ...data, items: [] };
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, checklists: [...c.checklists, newChecklist].sort((a,b) => a.position - b.position) } : c) })) }));
       showSuccess('Checklist added!');
+      broadcastUpdate();
     }
   };
 
@@ -365,6 +354,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => cl.id === checklistId ? { ...cl, title } : cl) })) })) }));
       showSuccess('Checklist updated!');
+      broadcastUpdate();
     }
   };
 
@@ -375,6 +365,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.filter(cl => cl.id !== checklistId) })) })) }));
       showSuccess('Checklist deleted.');
+      broadcastUpdate();
     }
   };
 
@@ -387,6 +378,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       showError('Failed to add item.');
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => cl.id === checklistId ? { ...cl, items: [...cl.items, data].sort((a,b) => a.position - b.position) } : cl) })) })) }));
+      broadcastUpdate();
     }
   };
 
@@ -396,6 +388,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       showError('Failed to update item.');
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => ({ ...cl, items: cl.items.map(i => i.id === itemId ? { ...i, ...itemData } : i) })) })) })) }));
+      broadcastUpdate();
     }
   };
 
@@ -405,6 +398,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       showError('Failed to delete item.');
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, checklists: c.checklists.map(cl => ({ ...cl, items: cl.items.filter(i => i.id !== itemId) })) })) })) }));
+      broadcastUpdate();
     }
   };
 
@@ -428,6 +422,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, attachments: [...c.attachments, newAttachment] } : c) })) }));
       showSuccess('Attachment added!');
+      broadcastUpdate();
     }
   };
 
@@ -438,6 +433,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, attachments: c.attachments.map(a => a.id === attachmentId ? { ...a, ...data } : a) })) })) }));
       showSuccess('Attachment renamed!');
+      broadcastUpdate();
     }
   };
 
@@ -457,6 +453,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, attachments: c.attachments.filter(a => a.id !== attachmentId) })) })) }));
       showSuccess('Attachment deleted.');
+      broadcastUpdate();
     }
   };
 
@@ -528,6 +525,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
         )
       }))
     }));
+    broadcastUpdate();
   };
 
   const handleUpdateComment = async (commentId: string, content: string) => {
@@ -536,6 +534,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       showError('Failed to update comment.');
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, comments: c.comments.map(com => com.id === commentId ? data as Comment : com) })) })) }));
+      broadcastUpdate();
     }
   };
 
@@ -546,6 +545,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     } else {
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => ({ ...c, comments: c.comments.filter(com => com.id !== commentId) })) })) }));
       showSuccess('Comment deleted.');
+      broadcastUpdate();
     }
   };
 

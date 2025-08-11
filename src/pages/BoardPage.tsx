@@ -27,7 +27,7 @@ import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
  */
 const BoardPage = () => {
   const { boardId } = useParams<{ boardId: string }>();
-  useAuth(); // Ensures user is authenticated before accessing the page
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [board, setBoard] = useState<BoardType | null>(null);
@@ -41,8 +41,6 @@ const BoardPage = () => {
   const getBoardData = useCallback(async () => {
     if (!boardId) return;
 
-    // This is the main data query for the board page. It uses Supabase's nested selects
-    // to fetch the entire board structure in a single request.
     const { data: fullBoardData, error } = await supabase
       .from('boards')
       .select(`
@@ -80,8 +78,6 @@ const BoardPage = () => {
       return;
     }
 
-    // Map the raw data from Supabase to our structured TypeScript types.
-    // This includes sorting items by position and combining related card data.
     const boardWithMappedData: BoardType = {
       ...fullBoardData,
       is_closed: fullBoardData.is_closed,
@@ -118,37 +114,25 @@ const BoardPage = () => {
     getBoardData();
   }, [boardId, getBoardData]);
 
-  // Set up Supabase real-time subscription to listen for any changes in the database.
-  // When a change occurs, it re-fetches the board data to keep the UI in sync.
+  // Set up Supabase real-time subscription to listen for broadcast events.
   useEffect(() => {
     if (!boardId) return;
 
-    const handleDbChange = (payload: any) => {
-      console.log('Change received!', payload);
-      getBoardData();
+    const handleBroadcast = (payload: { payload: { sender?: string } }) => {
+      // Refetch data if the broadcast came from another user
+      if (payload.payload?.sender !== session?.user.id) {
+        console.log('Broadcast received from another user, refetching board data...');
+        getBoardData();
+      }
     };
 
-    const channel = supabase.channel(`board-changes:${boardId}`);
+    const channel = supabase.channel(`board-channel:${boardId}`);
     
-    // We listen to changes on all tables that can affect the board's appearance.
-    // For tables with a direct board_id, we can filter. For nested tables (like cards),
-    // we listen to all changes and let the getBoardData refetch handle showing the correct data.
-    // This is a balance between performance and implementation simplicity.
     channel
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'boards', filter: `id=eq.${boardId}` }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lists', filter: `board_id=eq.${boardId}` }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'labels', filter: `board_id=eq.${boardId}` }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_members', filter: `board_id=eq.${boardId}` }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_labels' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklists' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist_items' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_attachments' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_comments' }, handleDbChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'card_relations' }, handleDbChange)
+      .on('broadcast', { event: 'board-update' }, handleBroadcast)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`Realtime subscribed for board ${boardId}`);
+          console.log(`Realtime broadcast subscribed for board ${boardId}`);
         }
         if (status === 'CHANNEL_ERROR') {
           console.error('Realtime subscription error:', err);
@@ -156,22 +140,15 @@ const BoardPage = () => {
         }
       });
 
-    // Unsubscribe from the channel when the component unmounts.
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [boardId, getBoardData]);
+  }, [boardId, getBoardData, session?.user?.id]);
 
-  // Sync the modal's open state with the `cardId` URL search parameter.
   useEffect(() => {
     setModalCardId(searchParams.get('cardId'));
   }, [searchParams]);
 
-  /**
-   * Updates the URL search params to open or close the card details modal.
-   * @param {boolean} isOpen - Whether the modal should be open.
-   * @param {string} [cardId] - The ID of the card to show in the modal.
-   */
   const handleModalOpenChange = (isOpen: boolean, cardId?: string) => {
     const newSearchParams = new URLSearchParams(searchParams);
     if (isOpen && cardId) {
@@ -182,10 +159,6 @@ const BoardPage = () => {
     setSearchParams(newSearchParams, { replace: true });
   };
 
-  /**
-   * Handles updating the board's background configuration.
-   * @param {BackgroundConfig} newConfig - The new background configuration.
-   */
   const handleBackgroundChange = async (newConfig: BackgroundConfig) => {
     if (!board) return;
     const oldConfig = board.background_config;
@@ -204,9 +177,6 @@ const BoardPage = () => {
     }
   };
 
-  /**
-   * Handles closing the current board.
-   */
   const handleCloseBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -222,9 +192,6 @@ const BoardPage = () => {
     }
   };
 
-  /**
-   * Handles re-opening a closed board.
-   */
   const handleReopenBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -240,9 +207,6 @@ const BoardPage = () => {
     }
   };
 
-  /**
-   * Handles permanently deleting a board.
-   */
   const handleDeleteBoard = async () => {
     if (!board) return;
     const { error } = await supabase
@@ -258,10 +222,6 @@ const BoardPage = () => {
     }
   };
 
-  /**
-   * Handles changing the board's name.
-   * @param {string} name - The new name for the board.
-   */
   const handleBoardNameChange = async (name: string) => {
     if (!board) return;
     const oldName = board.name;
@@ -297,7 +257,6 @@ const BoardPage = () => {
     );
   }
 
-  // Render a special view for closed boards, allowing users to re-open or delete them.
   if (board.is_closed) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-gray-100">
