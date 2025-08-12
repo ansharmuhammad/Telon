@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { BackgroundConfig } from '@/types/trello';
 import { getBackgroundThumbnailStyle } from '@/lib/utils';
 import { Replace } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type BoardSummary = {
   id: string;
@@ -84,7 +85,9 @@ export const SwitchBoardButton = () => {
         <ScrollArea className="h-[400px]">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1">
             {loading ? (
-              <p>Loading...</p>
+              [...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-md" />
+              ))
             ) : (
               filteredBoards.map(board => {
                 const boardStyle = getBackgroundThumbnailStyle(board.background_config);

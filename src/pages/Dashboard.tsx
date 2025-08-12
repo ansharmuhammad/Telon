@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { UserNav } from '@/components/layout/UserNav';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type BoardSummary = {
   id: string;
@@ -171,7 +172,11 @@ const Dashboard = () => {
             </Card>
 
             {loading ? (
-              <p>Loading boards...</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {[...Array(8)].map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full rounded-lg" />
+                ))}
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {openBoards.map((board) => {
@@ -199,7 +204,17 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <p>Loading boards...</p>
+                  <div className="space-y-4">
+                    {[...Array(2)].map((_, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                        <Skeleton className="h-6 w-1/3" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-10 w-24" />
+                          <Skeleton className="h-10 w-40" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {closedBoards.map((board) => (

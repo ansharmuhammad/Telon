@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
+import { BoardSkeleton } from '@/components/layout/BoardSkeleton';
 
 /**
  * Renders the main board page, fetching all data for a specific board
@@ -243,7 +244,7 @@ const BoardPage = () => {
   const backgroundStyle = board ? getBackgroundStyle(board.background_config) : {};
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading your board...</div>;
+    return <BoardSkeleton />;
   }
 
   if (!board) {
