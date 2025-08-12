@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,6 +28,7 @@ import { showError } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CommentRenderer } from './CommentRenderer';
+import { fireConfettiFromElement } from '@/lib/confetti';
 
 const cardFormSchema = z.object({
   content: z.string().min(1, 'Title is required'),
@@ -89,6 +90,7 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
   const [newAttachmentName, setNewAttachmentName] = useState('');
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
   const [mentionedUsers, setMentionedUsers] = useState<string[]>([]);
+  const checkboxRef = useRef<HTMLButtonElement>(null);
 
   const cardForm = useForm<z.infer<typeof cardFormSchema>>({
     resolver: zodResolver(cardFormSchema),
@@ -217,7 +219,18 @@ export const CardDetailsModal = (props: CardDetailsModalProps) => {
                     <DialogTitle className="sr-only">Editing Card: {card.content}</DialogTitle>
                     <DialogDescription className="sr-only">Modify card details, add attachments, checklists, and more.</DialogDescription>
                     <div className="flex items-start gap-3">
-                      <Checkbox id="card-completed-checkbox" checked={card.is_completed} onCheckedChange={(checked) => onUpdateCard(card.id, { is_completed: !!checked })} className="mt-2 h-5 w-5" />
+                      <Checkbox
+                        ref={checkboxRef}
+                        id="card-completed-checkbox"
+                        checked={card.is_completed}
+                        onCheckedChange={(checked) => {
+                          onUpdateCard(card.id, { is_completed: !!checked });
+                          if (!!checked && checkboxRef.current) {
+                            fireConfettiFromElement(checkboxRef.current);
+                          }
+                        }}
+                        className="mt-2 h-5 w-5"
+                      />
                       <div className="flex-grow">
                         <FormField control={cardForm.control} name="content" render={({ field }) => (<FormItem><FormControl><Input {...field} className={cn("text-lg font-bold border-none shadow-none -ml-2", card.is_completed && "line-through text-muted-foreground")} /></FormControl>{cardForm.formState.errors.content && <p className="text-sm text-destructive ml-2">{cardForm.formState.errors.content.message}</p>}</FormItem>)} />
                       </div>

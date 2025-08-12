@@ -8,6 +8,7 @@ import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { fireConfettiFromElement } from '@/lib/confetti';
 
 type TrelloCardProps = {
   card: CardType;
@@ -19,6 +20,8 @@ const MotionCard = motion(Card);
 
 export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps) => {
   const ref = useRef(null);
+  const checkboxRef = useRef<HTMLButtonElement>(null);
+  const coverCheckboxRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
 
@@ -48,8 +51,11 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
     };
   }, [card.id, card.list_id]);
 
-  const handleCheck = async (checked: boolean) => {
+  const handleCheck = async (checked: boolean, ref: React.RefObject<HTMLButtonElement>) => {
     await onUpdateCard(card.id, { is_completed: checked });
+    if (checked && ref.current) {
+      fireConfettiFromElement(ref.current);
+    }
   };
 
   const dueDate = card.due_date ? new Date(card.due_date) : null;
@@ -122,9 +128,10 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
             card.is_completed ? "bg-black/50" : "bg-black/20 opacity-0 group-hover:opacity-100"
           )} />
           <Checkbox
+            ref={coverCheckboxRef}
             id={`card-check-cover-${card.id}`}
             checked={card.is_completed}
-            onCheckedChange={(checked) => handleCheck(Boolean(checked))}
+            onCheckedChange={(checked) => handleCheck(Boolean(checked), coverCheckboxRef)}
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "absolute top-2 right-2 z-20 border-white/50 text-white data-[state=checked]:bg-green-500 data-[state=checked]:border-green-600",
@@ -149,9 +156,10 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
         )}
         <div className="flex items-start gap-2">
           <Checkbox
+            ref={checkboxRef}
             id={`card-check-${card.id}`}
             checked={card.is_completed}
-            onCheckedChange={(checked) => handleCheck(Boolean(checked))}
+            onCheckedChange={(checked) => handleCheck(Boolean(checked), checkboxRef)}
             onClick={(e) => e.stopPropagation()}
             className="mt-1"
           />
