@@ -5,6 +5,8 @@ import { AddCardForm } from './AddCardForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus, ListChecks } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,13 +36,14 @@ type TrelloListProps = {
   onAddCard: (listId: string, content: string, afterPosition?: number) => Promise<void>;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
   onUpdateList: (listId: string, title: string) => Promise<void>;
+  onUpdateListLimit: (listId: string, limit: number | null) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
 
 const MotionCard = motion(Card);
 
-export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
+export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, onUpdateList, onUpdateListLimit, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
@@ -48,6 +51,8 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
   const [title, setTitle] = useState(list.title);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showInlineAddForm, setShowInlineAddForm] = useState<number | null>(null);
+  const [limit, setLimit] = useState<string | number>(list.card_limit || '');
+  const [isLimitPopoverOpen, setIsLimitPopoverOpen] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -82,9 +87,17 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
     }
   };
 
+  const handleLimitSave = () => {
+    const newLimit = limit === '' ? null : parseInt(String(limit), 10);
+    if (newLimit !== null && (isNaN(newLimit) || newLimit < 0)) return;
+    onUpdateListLimit(list.id, newLimit);
+    setIsLimitPopoverOpen(false);
+  };
+
   const listIndex = lists.findIndex(l => l.id === list.id);
   const canMoveLeft = listIndex > 0;
   const canMoveRight = listIndex < lists.length - 1;
+  const isOverLimit = list.card_limit !== null && list.cards.length > list.card_limit;
 
   return (
     <>
@@ -101,7 +114,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
           isDragging && 'opacity-50'
         )}
       >
-        <CardHeader className="p-3 flex flex-row items-center justify-between">
+        <CardHeader className={cn("p-3 flex flex-row items-center justify-between", isOverLimit && "bg-yellow-300/50 dark:bg-yellow-800/30")}>
           <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           {isEditing ? (
             <form onSubmit={handleTitleSubmit} className="flex-grow mx-2">
@@ -118,6 +131,25 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+              <Popover open={isLimitPopoverOpen} onOpenChange={setIsLimitPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ListChecks className="mr-2 h-4 w-4" />Set card limit</DropdownMenuItem>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`limit-${list.id}`}>Card Limit</Label>
+                      <Input id={`limit-${list.id}`} type="number" value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="No limit" min="0" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Button onClick={handleLimitSave}>Save</Button>
+                      {list.card_limit !== null && (
+                        <Button variant="outline" onClick={() => { setLimit(''); onUpdateListLimit(list.id, null); setIsLimitPopoverOpen(false); }}>Remove Limit</Button>
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onMoveList(list.id, 'left')} disabled={!canMoveLeft}><ArrowLeft className="mr-2 h-4 w-4" />Move Left</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onMoveList(list.id, 'right')} disabled={!canMoveRight}><ArrowRight className="mr-2 h-4 w-4" />Move Right</DropdownMenuItem>

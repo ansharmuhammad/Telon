@@ -164,6 +164,7 @@ export type List = {
   position: number;
   board_id: string;
   cards: Card[];
+  card_limit: number | null;
 };
 
 /**

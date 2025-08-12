@@ -53,7 +53,7 @@ const BoardPage = () => {
         labels (*),
         members:board_members(*, user:users(id, full_name, avatar_url, email)),
         lists (
-          id, title, position, board_id,
+          id, title, position, board_id, card_limit,
           cards (
             *,
             cover_config,

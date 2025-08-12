@@ -247,6 +247,17 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
     }
   };
 
+  const handleUpdateListLimit = async (listId: string, limit: number | null) => {
+    const { error } = await supabase.from('lists').update({ card_limit: limit }).eq('id', listId);
+    if (error) {
+      showError('Failed to update list limit.');
+    } else {
+      setBoard(b => ({ ...b, lists: b.lists.map(l => l.id === listId ? { ...l, card_limit: limit } : l) }));
+      showSuccess('List limit updated!');
+      broadcastUpdate();
+    }
+  };
+
   const handleDeleteList = async (listId: string) => {
     const { error } = await supabase.from('lists').delete().eq('id', listId);
     if (error) {
@@ -563,6 +574,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
               onAddCard={handleAddCard}
               onUpdateCard={handleUpdateCard}
               onUpdateList={handleUpdateList}
+              onUpdateListLimit={handleUpdateListLimit}
               onDeleteList={handleDeleteList}
               onMoveList={handleMoveList}
             />
