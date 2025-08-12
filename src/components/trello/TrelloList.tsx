@@ -131,7 +131,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setIsEditing(true)}><Edit className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
-              <Popover open={isLimitPopoverOpen} onOpenChange={setIsLimitPopoverOpen}>
+              <Popover modal={true} open={isLimitPopoverOpen} onOpenChange={setIsLimitPopoverOpen}>
                 <PopoverTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ListChecks className="mr-2 h-4 w-4" />Set card limit</DropdownMenuItem>
                 </PopoverTrigger>
