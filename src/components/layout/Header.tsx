@@ -22,7 +22,7 @@ import {
 import { InviteUserPopover } from './InviteUserPopover';
 import { NotificationBell } from './NotificationBell';
 import { UserNav } from './UserNav';
-import { ThemeToggle } from './ThemeToggle';
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
 
 type HeaderProps = {
   board: Board | null;
@@ -137,7 +137,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
             </PopoverContent>
           </Popover>
         )}
-        <ThemeToggle />
+        <AnimatedThemeToggler />
         <NotificationBell />
         <UserNav />
       </div>
