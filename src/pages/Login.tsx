@@ -2,7 +2,6 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BorderBeam } from '@/components/ui/border-beam';
 
 const Login = () => {
   return (
@@ -12,7 +11,6 @@ const Login = () => {
           <img src="/telon_logo_64x64.png" alt="TELON Logo" className="h-16 w-16" />
         </div>
         <Card className="relative overflow-hidden">
-          <BorderBeam />
           <CardHeader>
             <CardTitle className="text-center text-2xl">Welcome to TELON</CardTitle>
             <CardDescription className="text-center">Sign in or sign up to continue</CardDescription>
