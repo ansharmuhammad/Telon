@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
-import { motion } from "framer-motion"
+import { motion } from "@motionone/react"
 
 import { cn } from "@/lib/utils"
 
@@ -19,7 +19,7 @@ const AnimatedProgress = React.forwardRef<
       className="h-full w-full flex-1 bg-primary"
       initial={{ x: "-100%" }}
       animate={{ x: `-${100 - (value || 0)}%` }}
-      transition={{ ease: "easeInOut", duration: 0.8 }}
+      transition={{ easing: "ease-in-out", duration: 0.8 }}
     />
   </ProgressPrimitive.Root>
 ))

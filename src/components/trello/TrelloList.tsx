@@ -25,7 +25,7 @@ import {
 import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, Presence } from '@motionone/react';
 
 type TrelloListProps = {
   list: ListType;
@@ -90,7 +90,6 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
     <>
       <MotionCard 
         ref={ref}
-        layout
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -127,7 +126,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
           </DropdownMenu>
         </CardHeader>
         <CardContent className="flex flex-col gap-1 p-1 pt-0 min-h-[2rem]">
-          <AnimatePresence>
+          <Presence>
             {list.cards.map((card, index) => (
               <div key={card.id} className="relative group/item">
                 <TrelloCard
@@ -164,7 +163,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
                 )}
               </div>
             ))}
-          </AnimatePresence>
+          </Presence>
         </CardContent>
         <div className="p-1 pt-0">
           <AddCardForm listId={list.id} onAddCard={onAddCard} />

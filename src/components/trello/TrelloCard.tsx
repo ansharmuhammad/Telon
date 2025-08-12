@@ -7,7 +7,7 @@ import { AlignLeft, CalendarDays, CheckSquare, Paperclip } from 'lucide-react';
 import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion } from '@motionone/react';
 
 type TrelloCardProps = {
   card: CardType;
@@ -88,7 +88,6 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   return (
     <MotionCard
       ref={ref}
-      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
