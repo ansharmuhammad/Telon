@@ -22,6 +22,7 @@ import {
 import { InviteUserPopover } from './InviteUserPopover';
 import { NotificationBell } from './NotificationBell';
 import { UserNav } from './UserNav';
+import { ThemeToggle } from './ThemeToggle';
 
 type HeaderProps = {
   board: Board | null;
@@ -136,6 +137,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
             </PopoverContent>
           </Popover>
         )}
+        <ThemeToggle />
         <NotificationBell />
         <UserNav />
       </div>
