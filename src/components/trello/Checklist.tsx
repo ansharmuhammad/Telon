@@ -3,7 +3,7 @@ import { Checklist as ChecklistType, ChecklistItem as ChecklistItemType } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
+import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckSquare, X } from 'lucide-react';
 
@@ -132,7 +132,7 @@ export const Checklist = ({
       {totalItems > 0 && (
         <div className="flex items-center gap-2 pl-9">
           <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
-          <Progress value={progress} className="w-full" />
+          <AnimatedProgress value={progress} className="w-full" />
         </div>
       )}
       <div className="space-y-1 pl-9">

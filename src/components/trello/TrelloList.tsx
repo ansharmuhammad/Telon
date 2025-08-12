@@ -25,6 +25,7 @@ import {
 import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type TrelloListProps = {
   list: ListType;
@@ -36,6 +37,8 @@ type TrelloListProps = {
   onDeleteList: (listId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
+
+const MotionCard = motion(Card);
 
 export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
@@ -85,11 +88,19 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
 
   return (
     <>
-      <Card ref={ref} className={cn(
-        'w-72 flex-shrink-0 transition-colors',
-        isDraggedOver ? 'bg-secondary' : 'bg-gray-100',
-        isDragging && 'opacity-50'
-      )}>
+      <MotionCard 
+        ref={ref}
+        layout
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          'w-72 flex-shrink-0',
+          isDraggedOver ? 'bg-secondary' : 'bg-gray-100',
+          isDragging && 'opacity-50'
+        )}
+      >
         <CardHeader className="p-3 flex flex-row items-center justify-between">
           <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           {isEditing ? (
@@ -116,47 +127,49 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
           </DropdownMenu>
         </CardHeader>
         <CardContent className="flex flex-col gap-1 p-1 pt-0 min-h-[2rem]">
-          {list.cards.map((card, index) => (
-            <div key={card.id} className="relative group/item">
-              <TrelloCard
-                card={card}
-                onCardClick={onCardClick}
-                onUpdateCard={onUpdateCard}
-              />
-              {showInlineAddForm === index ? (
-                <div className="py-1">
-                  <AddCardForm
-                    listId={list.id}
-                    onAddCard={async (listId, content) => {
-                      await onAddCard(listId, content, card.position);
-                      setShowInlineAddForm(null);
-                    }}
-                    forceShow={true}
-                    onCancel={() => setShowInlineAddForm(null)}
-                  />
-                </div>
-              ) : (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="rounded-full h-6 w-6 shadow-md"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowInlineAddForm(index);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
+          <AnimatePresence>
+            {list.cards.map((card, index) => (
+              <div key={card.id} className="relative group/item">
+                <TrelloCard
+                  card={card}
+                  onCardClick={onCardClick}
+                  onUpdateCard={onUpdateCard}
+                />
+                {showInlineAddForm === index ? (
+                  <div className="py-1">
+                    <AddCardForm
+                      listId={list.id}
+                      onAddCard={async (listId, content) => {
+                        await onAddCard(listId, content, card.position);
+                        setShowInlineAddForm(null);
+                      }}
+                      forceShow={true}
+                      onCancel={() => setShowInlineAddForm(null)}
+                    />
+                  </div>
+                ) : (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="rounded-full h-6 w-6 shadow-md"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowInlineAddForm(index);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </AnimatePresence>
         </CardContent>
         <div className="p-1 pt-0">
           <AddCardForm listId={list.id} onAddCard={onAddCard} />
         </div>
-      </Card>
+      </MotionCard>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

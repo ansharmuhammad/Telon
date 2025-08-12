@@ -7,12 +7,15 @@ import { AlignLeft, CalendarDays, CheckSquare, Paperclip } from 'lucide-react';
 import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 type TrelloCardProps = {
   card: CardType;
   onCardClick: (card: CardType) => void;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
 };
+
+const MotionCard = motion(Card);
 
 export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps) => {
   const ref = useRef(null);
@@ -83,8 +86,13 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   const hasFullCover = card.cover_config?.size === 'full';
 
   return (
-    <Card
+    <MotionCard
       ref={ref}
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
       onClick={() => onCardClick(card)}
       className={cn(
         'bg-white cursor-pointer hover:bg-gray-50 relative group',
@@ -163,6 +171,6 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
           {checklistBadge}
         </div>
       </div>
-    </Card>
+    </MotionCard>
   );
 };
