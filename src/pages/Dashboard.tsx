@@ -11,6 +11,14 @@ import { BackgroundConfig } from '@/types/trello';
 import { getBackgroundThumbnailStyle, cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,21 +39,28 @@ type BoardSummary = {
   name: string;
   background_config: BackgroundConfig;
   is_closed: boolean;
+  last_viewed_at: string | null;
 };
 
 const Dashboard = () => {
   const { session } = useAuth();
   const [boards, setBoards] = useState<BoardSummary[]>([]);
+  const [templates, setTemplates] = useState<Omit<BoardSummary, 'last_viewed_at' | 'is_closed'>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newBoardName, setNewBoardName] = useState('');
+  const [templateLoading, setTemplateLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Omit<BoardSummary, 'last_viewed_at' | 'is_closed'> | null>(null);
+  const [newBoardNameFromTemplate, setNewBoardNameFromTemplate] = useState('');
 
   const fetchBoards = useCallback(async () => {
     if (!session?.user) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('boards')
-      .select('id, name, background_config, is_closed')
+      .select('id, name, background_config, is_closed, last_viewed_at, board_members!inner(user_id)')
+      .eq('board_members.user_id', session.user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -57,45 +72,46 @@ const Dashboard = () => {
     setLoading(false);
   }, [session]);
 
+  const fetchTemplates = useCallback(async () => {
+    setTemplateLoading(true);
+    const { data, error } = await supabase
+      .from('boards')
+      .select('id, name, background_config')
+      .is('user_id', null)
+      .order('name', { ascending: true });
+
+    if (error) {
+      showError('Failed to fetch templates.');
+    } else {
+      setTemplates(data as Omit<BoardSummary, 'last_viewed_at' | 'is_closed'>[]);
+    }
+    setTemplateLoading(false);
+  }, []);
+
   useEffect(() => {
     fetchBoards();
-  }, [fetchBoards]);
+    fetchTemplates();
+  }, [fetchBoards, fetchTemplates]);
 
-  const handleCreateBoard = async (e: React.FormEvent) => {
+  const handleCreateFromTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBoardName.trim() || !session?.user || isCreating) return;
+    if (!selectedTemplate || !newBoardNameFromTemplate.trim() || isCreating) return;
     setIsCreating(true);
 
-    const { data: newBoard, error: boardError } = await supabase
-      .from('boards')
-      .insert({ name: newBoardName.trim() }) // No user_id here
-      .select('id')
-      .single();
+    const { error } = await supabase.rpc('clone_board', {
+      template_board_id: selectedTemplate.id,
+      new_board_name: newBoardNameFromTemplate.trim()
+    });
 
-    if (boardError) {
-      showError(`Failed to create board: ${boardError.message}`);
-      setIsCreating(false);
-      return;
-    }
-
-    if (newBoard) {
-      // Second request: Create the default lists for the new board
-      const { error: listError } = await supabase.from('lists').insert([
-        { board_id: newBoard.id, title: 'To Do', position: 1 },
-        { board_id: newBoard.id, title: 'In Progress', position: 2 },
-        { board_id: newBoard.id, title: 'Done', position: 3 },
-      ]);
-
-      if (listError) {
-        showError(`Board created, but failed to add lists: ${listError.message}`);
-      } else {
-        showSuccess('Board created!');
-      }
-      
-      setNewBoardName('');
+    if (error) {
+      showError(`Failed to create board from template: ${error.message}`);
+    } else {
+      showSuccess(`Board '${newBoardNameFromTemplate.trim()}' created!`);
       fetchBoards();
+      setIsTemplateDialogOpen(false);
+      setSelectedTemplate(null);
+      setNewBoardNameFromTemplate('');
     }
-    
     setIsCreating(false);
   };
 
@@ -129,24 +145,30 @@ const Dashboard = () => {
 
   const openBoards = boards.filter(b => !b.is_closed);
   const closedBoards = boards.filter(b => b.is_closed);
+  const recentBoards = [...boards]
+    .filter(b => !b.is_closed && b.last_viewed_at)
+    .sort((a, b) => new Date(b.last_viewed_at!).getTime() - new Date(a.last_viewed_at!).getTime())
+    .slice(0, 4);
+
+  const BoardCard = ({ board }: { board: Omit<BoardSummary, 'is_closed' | 'last_viewed_at'> }) => {
+    const boardStyle = getBackgroundThumbnailStyle(board.background_config);
+    return (
+      <Card className="h-32 flex flex-col justify-end p-4 text-white font-bold bg-gray-700 bg-cover bg-center hover:opacity-90 transition-opacity relative" style={boardStyle}>
+        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors rounded-lg" />
+        <span className="relative z-10">{board.name}</span>
+      </Card>
+    );
+  };
 
   return (
     <div className="relative min-h-screen bg-background">
-      <GridPattern
-        width={40}
-        height={40}
-        x={-1}
-        y={-1}
-        className={cn(
-          "[mask-image:radial-gradient(ellipse_at_center,white,transparent_90%)]",
-        )}
-      />
+      <GridPattern width={40} height={40} x={-1} y={-1} className={cn("[mask-image:radial-gradient(ellipse_at_center,white,transparent_90%)]")} />
       <header className="bg-white shadow-sm dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
               <img src="/telon_logo_48x48.png" alt="TELON Logo" className="h-10 w-10" />
-              <h1 className="text-2xl font-bold">My Boards</h1>
+              <h1 className="text-2xl font-bold">Dashboard</h1>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
@@ -156,53 +178,51 @@ const Dashboard = () => {
         </div>
       </header>
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? <Skeleton className="h-48 w-full mb-12" /> : recentBoards.length > 0 && (
+          <section className="mb-12">
+            <h2 className="text-xl font-bold mb-4">Recent Boards</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {recentBoards.map(board => (
+                <Link to={`/board/${board.id}`} key={board.id}><BoardCard board={board} /></Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mb-12">
+          <h2 className="text-xl font-bold mb-4">Start with a template</h2>
+          {templateLoading ? <Skeleton className="h-32 w-full" /> : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {templates.map(template => (
+                <button key={template.id} onClick={() => { setSelectedTemplate(template); setIsTemplateDialogOpen(true); setNewBoardNameFromTemplate(template.name.replace(' Template', '')); }}>
+                  <BoardCard board={template} />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
         <Tabs defaultValue="open" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="open">My Boards</TabsTrigger>
+            <TabsTrigger value="open">All My Boards</TabsTrigger>
             <TabsTrigger value="closed">Closed Boards</TabsTrigger>
           </TabsList>
-          <TabsContent value="open" className="pt-4">
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Create a new board</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateBoard} className="flex gap-2">
-                  <Input
-                    placeholder="New board name..."
-                    value={newBoardName}
-                    onChange={(e) => setNewBoardName(e.target.value)}
-                    disabled={isCreating}
-                  />
-                  <Button type="submit" disabled={!newBoardName.trim() || isCreating}>
-                    {isCreating ? 'Creating...' : <><Plus className="h-4 w-4 mr-2" /> Create</>}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
+          <TabsContent value="open" className="pt-8">
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, i) => (
-                  <Skeleton key={i} className="h-32 w-full rounded-lg" />
-                ))}
+                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {openBoards.map((board) => {
-                  const boardStyle = getBackgroundThumbnailStyle(board.background_config);
-                  return (
-                    <Link to={`/board/${board.id}`} key={board.id}>
-                      <Card className="h-32 flex flex-col justify-end p-4 text-white font-bold bg-gray-700 bg-cover bg-center hover:opacity-90 transition-opacity relative"
-                        style={boardStyle}
-                      >
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors rounded-lg" />
-                        <span className="relative z-10">{board.name}</span>
-                      </Card>
-                    </Link>
-                  );
-                })}
-                {openBoards.length === 0 && <p>You don't have any boards yet. Create one above!</p>}
+                <Card className="h-32 flex items-center justify-center border-dashed hover:border-primary hover:text-primary transition-colors">
+                  <Link to="#" onClick={(e) => { e.preventDefault(); const el = document.getElementById('new-board-name'); if (el) el.focus(); }} className="text-center text-muted-foreground">
+                    <Plus className="h-8 w-8 mx-auto mb-2" />
+                    Create new board
+                  </Link>
+                </Card>
+                {openBoards.map((board) => (
+                  <Link to={`/board/${board.id}`} key={board.id}><BoardCard board={board} /></Link>
+                ))}
               </div>
             )}
           </TabsContent>
@@ -214,17 +234,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="space-y-4">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                        <Skeleton className="h-6 w-1/3" />
-                        <div className="flex gap-2">
-                          <Skeleton className="h-10 w-24" />
-                          <Skeleton className="h-10 w-40" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="space-y-4">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
                 ) : (
                   <div className="space-y-4">
                     {closedBoards.map((board) => (
@@ -232,23 +242,7 @@ const Dashboard = () => {
                         <span className="font-medium">{board.name}</span>
                         <div className="flex gap-2">
                           <Button variant="outline" onClick={() => handleReopenBoard(board.id)}>Re-open</Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive">Delete Permanently</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the board and all of its data.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteBoard(board.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive">Delete Permanently</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the board and all of its data.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteBoard(board.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                         </div>
                       </div>
                     ))}
@@ -260,6 +254,30 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
       </main>
+      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create board from '{selectedTemplate?.name}'</DialogTitle>
+            <DialogDescription>What would you like to name your new board?</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateFromTemplate}>
+            <Input
+              id="new-board-name-from-template"
+              placeholder="Board name"
+              value={newBoardNameFromTemplate}
+              onChange={(e) => setNewBoardNameFromTemplate(e.target.value)}
+              className="mt-4"
+              autoFocus
+            />
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+            <Button type="submit" form="new-board-name-from-template" onClick={handleCreateFromTemplate} disabled={!newBoardNameFromTemplate.trim() || isCreating}>
+              {isCreating ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

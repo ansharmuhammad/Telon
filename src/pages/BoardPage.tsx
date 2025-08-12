@@ -115,6 +115,19 @@ const BoardPage = () => {
     getBoardData();
   }, [boardId, getBoardData]);
 
+  // Log when the user views the board to populate "Recent Boards"
+  useEffect(() => {
+    if (boardId) {
+      const updateLastViewed = async () => {
+        await supabase
+          .from('boards')
+          .update({ last_viewed_at: new Date().toISOString() })
+          .eq('id', boardId);
+      };
+      updateLastViewed();
+    }
+  }, [boardId]);
+
   // Set up Supabase real-time subscription to listen for broadcast events.
   useEffect(() => {
     if (!boardId) return;
