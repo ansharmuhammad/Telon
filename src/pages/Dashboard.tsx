@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { BackgroundConfig } from '@/types/trello';
-import { getBackgroundThumbnailStyle } from '@/lib/utils';
+import { getBackgroundThumbnailStyle, cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import {
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { UserNav } from '@/components/layout/UserNav';
 import { Skeleton } from '@/components/ui/skeleton';
+import GridPattern from '@/components/ui/grid-pattern';
 
 type BoardSummary = {
   id: string;
@@ -130,7 +131,16 @@ const Dashboard = () => {
   const closedBoards = boards.filter(b => b.is_closed);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
+      <GridPattern
+        width={40}
+        height={40}
+        x={-1}
+        y={-1}
+        className={cn(
+          "[mask-image:radial-gradient(ellipse_at_center,white,transparent_90%)]",
+        )}
+      />
       <header className="bg-white shadow-sm dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showError, showSuccess } from '@/utils/toast';
 import { Separator } from '@/components/ui/separator';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 const Login = () => {
   const [newBoardName, setNewBoardName] = useState('');
@@ -68,7 +69,8 @@ const Login = () => {
           <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-background px-2 text-sm text-muted-foreground">OR</span>
         </div>
 
-        <Card>
+        <Card className="relative overflow-hidden">
+          <BorderBeam />
           <CardHeader>
             <CardTitle className="text-center text-xl">Create a public board</CardTitle>
             <CardDescription className="text-center">No account needed. Anyone with the link can view and edit.</CardDescription>
