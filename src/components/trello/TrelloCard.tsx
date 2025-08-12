@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
 import { Card as CardType } from '@/types/trello';
-import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { AlignLeft, CalendarDays, CheckSquare, Paperclip } from 'lucide-react';
@@ -14,8 +13,6 @@ type TrelloCardProps = {
   onCardClick: (card: CardType) => void;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
 };
-
-const MotionCard = motion(Card);
 
 export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps) => {
   const ref = useRef(null);
@@ -86,7 +83,7 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   const hasFullCover = card.cover_config?.size === 'full';
 
   return (
-    <MotionCard
+    <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -94,6 +91,7 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
       transition={{ duration: 0.2 }}
       onClick={() => onCardClick(card)}
       className={cn(
+        "rounded-lg border bg-card text-card-foreground shadow-sm",
         'bg-white cursor-pointer hover:bg-gray-50 relative group',
         isDragging && 'opacity-50',
         card.is_completed && !hasFullCover && 'bg-gray-50',
@@ -170,6 +168,6 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
           {checklistBadge}
         </div>
       </div>
-    </MotionCard>
+    </motion.div>
   );
 };

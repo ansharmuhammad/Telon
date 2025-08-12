@@ -8,7 +8,7 @@ import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/ad
 import { showError, showSuccess } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Presence } from '@motionone/react';
+import { AnimatePresence } from '@motionone/react';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;
@@ -553,7 +553,7 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow flex gap-4 overflow-x-auto pb-4 items-start">
-        <Presence>
+        <AnimatePresence>
           {board.lists.sort((a, b) => a.position - b.position).map(list => (
             <TrelloList
               key={list.id}
@@ -567,42 +567,44 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
               onMoveList={handleMoveList}
             />
           ))}
-        </Presence>
+        </AnimatePresence>
         <AddListForm onAddList={handleAddList} />
       </div>
-      {modalCard && (
-        <CardDetailsModal
-          key={modalCard.id}
-          isOpen={!!modalCardId}
-          onOpenChange={(isOpen) => onModalOpenChange(isOpen)}
-          card={modalCard}
-          allCards={allCards}
-          lists={board.lists}
-          boardLabels={board.labels}
-          boardMembers={board.members}
-          onUpdateCard={handleUpdateCard}
-          onDeleteCard={handleDeleteCard}
-          onMoveCard={handleMoveCard}
-          onToggleLabelOnCard={handleToggleLabelOnCard}
-          onCreateLabel={handleCreateLabel}
-          onUpdateLabel={handleUpdateLabel}
-          onAddRelation={handleAddRelation}
-          onRemoveRelation={handleRemoveRelation}
-          onSelectCard={(cardId) => onModalOpenChange(true, cardId)}
-          onAddChecklist={handleAddChecklist}
-          onUpdateChecklist={handleUpdateChecklist}
-          onDeleteChecklist={handleDeleteChecklist}
-          onAddChecklistItem={handleAddChecklistItem}
-          onUpdateChecklistItem={handleUpdateChecklistItem}
-          onDeleteChecklistItem={handleDeleteChecklistItem}
-          onAddAttachment={handleAddAttachment}
-          onUpdateAttachment={handleUpdateAttachment}
-          onDeleteAttachment={handleDeleteAttachment}
-          onAddComment={handleAddComment}
-          onUpdateComment={handleUpdateComment}
-          onDeleteComment={handleDeleteComment}
-        />
-      )}
+      <AnimatePresence>
+        {modalCard && (
+          <CardDetailsModal
+            key={modalCard.id}
+            isOpen={!!modalCardId}
+            onOpenChange={(isOpen) => onModalOpenChange(isOpen)}
+            card={modalCard}
+            allCards={allCards}
+            lists={board.lists}
+            boardLabels={board.labels}
+            boardMembers={board.members}
+            onUpdateCard={handleUpdateCard}
+            onDeleteCard={handleDeleteCard}
+            onMoveCard={handleMoveCard}
+            onToggleLabelOnCard={handleToggleLabelOnCard}
+            onCreateLabel={handleCreateLabel}
+            onUpdateLabel={handleUpdateLabel}
+            onAddRelation={handleAddRelation}
+            onRemoveRelation={handleRemoveRelation}
+            onSelectCard={(cardId) => onModalOpenChange(true, cardId)}
+            onAddChecklist={handleAddChecklist}
+            onUpdateChecklist={handleUpdateChecklist}
+            onDeleteChecklist={handleDeleteChecklist}
+            onAddChecklistItem={handleAddChecklistItem}
+            onUpdateChecklistItem={handleUpdateChecklistItem}
+            onDeleteChecklistItem={handleDeleteChecklistItem}
+            onAddAttachment={handleAddAttachment}
+            onUpdateAttachment={handleUpdateAttachment}
+            onDeleteAttachment={handleDeleteAttachment}
+            onAddComment={handleAddComment}
+            onUpdateComment={handleUpdateComment}
+            onDeleteComment={handleDeleteComment}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
