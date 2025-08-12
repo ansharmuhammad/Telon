@@ -14,9 +14,10 @@ type TrelloBoardProps = {
   initialBoard: BoardType;
   modalCardId: string | null;
   onModalOpenChange: (isOpen: boolean, cardId?: string) => void;
+  onCardComplete: () => void;
 };
 
-const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoardProps) => {
+const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange, onCardComplete }: TrelloBoardProps) => {
   const [board, setBoard] = useState(initialBoard);
   const { session } = useAuth();
   const channel = useMemo<RealtimeChannel>(() => supabase.channel(`board-channel:${initialBoard.id}`), [initialBoard.id]);
@@ -215,6 +216,9 @@ const TrelloBoard = ({ initialBoard, modalCardId, onModalOpenChange }: TrelloBoa
       setBoard(b => ({ ...b, lists: b.lists.map(l => ({ ...l, cards: l.cards.map(c => c.id === cardId ? { ...c, ...data } : c) })) }));
       if (data.is_completed !== undefined) {
         showSuccess(data.is_completed ? 'Task completed!' : 'Task marked as not completed.');
+        if (data.is_completed) {
+          onCardComplete();
+        }
       } else {
         showSuccess('Card updated!');
       }

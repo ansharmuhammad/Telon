@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SwitchBoardButton } from '@/components/layout/SwitchBoardButton';
 import { BoardSkeleton } from '@/components/layout/BoardSkeleton';
+import Confetti from 'react-confetti';
 
 /**
  * Renders the main board page, fetching all data for a specific board
@@ -34,6 +35,16 @@ const BoardPage = () => {
   const [board, setBoard] = useState<BoardType | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalCardId, setModalCardId] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   /**
    * Fetches all data for the current board from Supabase.
@@ -241,6 +252,10 @@ const BoardPage = () => {
     }
   };
 
+  const handleCardComplete = () => {
+    setShowConfetti(true);
+  };
+
   const backgroundStyle = board ? getBackgroundStyle(board.background_config) : {};
 
   if (loading) {
@@ -297,12 +312,23 @@ const BoardPage = () => {
       className="h-screen flex flex-col bg-gray-50 bg-cover bg-center"
       style={backgroundStyle}
     >
+      {showConfetti && (
+        <Confetti
+          width={windowSize.width}
+          height={windowSize.height}
+          recycle={false}
+          numberOfPieces={400}
+          onConfettiComplete={() => setShowConfetti(false)}
+          style={{ zIndex: 100 }}
+        />
+      )}
       <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} onBoardNameChange={handleBoardNameChange} />
       <main className="flex-grow p-4 md:p-6 overflow-hidden">
         <TrelloBoard 
           initialBoard={board} 
           modalCardId={modalCardId}
           onModalOpenChange={handleModalOpenChange}
+          onCardComplete={handleCardComplete}
         />
       </main>
       <SwitchBoardButton />
