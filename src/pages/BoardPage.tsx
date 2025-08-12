@@ -260,8 +260,8 @@ const BoardPage = () => {
 
   if (board.is_closed) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md w-full">
+      <div className="h-screen flex flex-col items-center justify-center bg-background">
+        <div className="text-center p-8 bg-card rounded-lg shadow-md max-w-md w-full">
           <h1 className="text-2xl font-bold mb-2">Board is closed</h1>
           <p className="text-muted-foreground mb-6">
             To view this board, you'll need to re-open it.
@@ -294,7 +294,7 @@ const BoardPage = () => {
 
   return (
     <div 
-      className="h-screen flex flex-col bg-gray-50 bg-cover bg-center"
+      className="h-screen flex flex-col bg-background bg-cover bg-center"
       style={backgroundStyle}
     >
       <Header board={board} onBackgroundChange={handleBackgroundChange} onCloseBoard={handleCloseBoard} onBoardNameChange={handleBoardNameChange} />

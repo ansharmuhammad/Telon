@@ -23,7 +23,7 @@ export const AddListForm = ({ onAddList }: AddListFormProps) => {
 
   if (isEditing) {
     return (
-      <Card className="w-72 flex-shrink-0 bg-gray-100">
+      <Card className="w-72 flex-shrink-0 bg-muted">
         <CardContent className="p-2">
           <form onSubmit={handleSubmit}>
             <Input
@@ -49,7 +49,7 @@ export const AddListForm = ({ onAddList }: AddListFormProps) => {
     <Button
       variant="ghost"
       onClick={() => setIsEditing(true)}
-      className="w-72 flex-shrink-0 justify-start p-3 bg-white/50 hover:bg-white/80 text-foreground"
+      className="w-72 flex-shrink-0 justify-start p-3 bg-background/50 hover:bg-background/80 text-foreground"
     >
       <Plus className="h-4 w-4 mr-2" />
       Add another list

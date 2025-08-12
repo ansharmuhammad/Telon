@@ -43,7 +43,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50 py-12">
+    <div className="flex justify-center items-center min-h-screen bg-background py-12">
       <div className="w-full max-w-md mx-4 space-y-8">
         <div className="flex justify-center">
           <img src="/telon_logo_64x64.png" alt="TELON Logo" className="h-16 w-16" />
@@ -65,7 +65,7 @@ const Login = () => {
 
         <div className="relative">
           <Separator />
-          <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-gray-50 px-2 text-sm text-muted-foreground">OR</span>
+          <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-background px-2 text-sm text-muted-foreground">OR</span>
         </div>
 
         <Card>

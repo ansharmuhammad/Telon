@@ -130,13 +130,13 @@ const Dashboard = () => {
   const closedBoards = boards.filter(b => b.is_closed);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-background">
+      <header className="bg-white shadow-sm dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-3">
               <img src="/telon_logo_48x48.png" alt="TELON Logo" className="h-10 w-10" />
-              <h1 className="text-2xl font-bold text-gray-900">My Boards</h1>
+              <h1 className="text-2xl font-bold">My Boards</h1>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
@@ -218,7 +218,7 @@ const Dashboard = () => {
                 ) : (
                   <div className="space-y-4">
                     {closedBoards.map((board) => (
-                      <div key={board.id} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                      <div key={board.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted">
                         <span className="font-medium">{board.name}</span>
                         <div className="flex gap-2">
                           <Button variant="outline" onClick={() => handleReopenBoard(board.id)}>Re-open</Button>

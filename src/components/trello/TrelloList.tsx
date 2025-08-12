@@ -97,7 +97,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
         transition={{ duration: 0.2 }}
         className={cn(
           'w-72 flex-shrink-0',
-          isDraggedOver ? 'bg-secondary' : 'bg-gray-100',
+          isDraggedOver ? 'bg-secondary' : 'bg-muted',
           isDragging && 'opacity-50'
         )}
       >

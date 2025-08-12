@@ -65,10 +65,10 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   const dueDateBadge = dueDate && (
     <span className={cn(
       "flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
-      card.is_completed ? "bg-green-100 text-green-800" :
-      isOverdue ? "bg-red-100 text-red-800" :
-      isDueSoon ? "bg-yellow-100 text-yellow-800" :
-      "bg-gray-200"
+      card.is_completed ? "bg-green-500/20 text-green-700 dark:text-green-400" :
+      isOverdue ? "bg-red-500/20 text-red-700 dark:text-red-400" :
+      isDueSoon ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400" :
+      "bg-muted text-muted-foreground"
     )}>
       <CalendarDays className="h-3 w-3" />
       <span>{format(dueDate, 'MMM d')}</span>
@@ -81,7 +81,7 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   const checklistBadge = totalChecklistItems > 0 && (
     <span className={cn(
       "flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium",
-      completedChecklistItems === totalChecklistItems ? "bg-green-100 text-green-800" : "bg-gray-200"
+      completedChecklistItems === totalChecklistItems ? "bg-green-500/20 text-green-700 dark:text-green-400" : "bg-muted text-muted-foreground"
     )}>
       <CheckSquare className="h-3 w-3" />
       <span>{completedChecklistItems}/{totalChecklistItems}</span>
@@ -101,9 +101,9 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
       transition={{ duration: 0.2 }}
       onClick={() => onCardClick(card)}
       className={cn(
-        'bg-white cursor-pointer hover:bg-gray-50 relative group',
+        'bg-card cursor-pointer hover:bg-muted/50 relative group',
         isDragging && 'opacity-50',
-        card.is_completed && !hasFullCover && 'bg-gray-50',
+        card.is_completed && !hasFullCover && 'bg-muted',
         hasFullCover && 'bg-transparent border-none shadow-none'
       )}
     >

@@ -34,7 +34,7 @@ const ChecklistItem = ({ item, onUpdate, onDelete }: ChecklistItemProps) => {
   };
 
   return (
-    <div className="flex items-center group hover:bg-gray-50 p-1 rounded-md">
+    <div className="flex items-center group hover:bg-muted/50 p-1 rounded-md">
       <Checkbox
         checked={item.is_completed}
         onCheckedChange={(checked) => onUpdate(item.id, { is_completed: !!checked })}
