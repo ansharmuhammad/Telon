@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Card as CardType, List as ListType } from '@/types/trello';
 import { TrelloCard } from './TrelloCard';
 import { AddCardForm } from './AddCardForm';
-import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,7 +25,7 @@ import {
 import { MoreHorizontal, Edit, Trash2, GripVertical, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { cn } from '@/lib/utils';
-import { motion, Presence } from '@motionone/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type TrelloListProps = {
   list: ListType;
@@ -37,6 +37,8 @@ type TrelloListProps = {
   onDeleteList: (listId: string) => Promise<void>;
   onMoveList: (listId: string, direction: 'left' | 'right') => Promise<void>;
 };
+
+const MotionCard = motion(Card);
 
 export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, onUpdateList, onDeleteList, onMoveList }: TrelloListProps) => {
   const ref = useRef(null);
@@ -86,14 +88,14 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
 
   return (
     <>
-      <motion.div 
+      <MotionCard 
         ref={ref}
+        layout
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ duration: 0.2 }}
         className={cn(
-          "rounded-lg border bg-card text-card-foreground shadow-sm",
           'w-72 flex-shrink-0',
           isDraggedOver ? 'bg-secondary' : 'bg-gray-100',
           isDragging && 'opacity-50'
@@ -125,7 +127,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
           </DropdownMenu>
         </CardHeader>
         <CardContent className="flex flex-col gap-1 p-1 pt-0 min-h-[2rem]">
-          <Presence>
+          <AnimatePresence>
             {list.cards.map((card, index) => (
               <div key={card.id} className="relative group/item">
                 <TrelloCard
@@ -162,12 +164,12 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
                 )}
               </div>
             ))}
-          </Presence>
+          </AnimatePresence>
         </CardContent>
         <div className="p-1 pt-0">
           <AddCardForm listId={list.id} onAddCard={onAddCard} />
         </div>
-      </motion.div>
+      </MotionCard>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

@@ -8,7 +8,7 @@ import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/ad
 import { showError, showSuccess } from '@/utils/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { AnimatePresence } from '@motionone/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type TrelloBoardProps = {
   initialBoard: BoardType;

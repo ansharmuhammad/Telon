@@ -1,18 +1,21 @@
 import { useRef, useEffect, useState } from 'react';
 import { Card as CardType } from '@/types/trello';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { AlignLeft, CalendarDays, CheckSquare, Paperclip } from 'lucide-react';
 import { format, isPast, differenceInHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getCoverStyle } from '@/lib/utils';
-import { motion } from '@motionone/react';
+import { motion } from 'framer-motion';
 
 type TrelloCardProps = {
   card: CardType;
   onCardClick: (card: CardType) => void;
   onUpdateCard: (cardId: string, data: Partial<CardType>) => Promise<void>;
 };
+
+const MotionCard = motion(Card);
 
 export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps) => {
   const ref = useRef(null);
@@ -83,15 +86,15 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
   const hasFullCover = card.cover_config?.size === 'full';
 
   return (
-    <motion.div
+    <MotionCard
       ref={ref}
+      layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
       onClick={() => onCardClick(card)}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm",
         'bg-white cursor-pointer hover:bg-gray-50 relative group',
         isDragging && 'opacity-50',
         card.is_completed && !hasFullCover && 'bg-gray-50',
@@ -168,6 +171,6 @@ export const TrelloCard = ({ card, onCardClick, onUpdateCard }: TrelloCardProps)
           {checklistBadge}
         </div>
       </div>
-    </motion.div>
+    </MotionCard>
   );
 };
