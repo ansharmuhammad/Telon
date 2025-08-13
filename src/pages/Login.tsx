@@ -4,8 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import GridPattern from '@/components/ui/grid-pattern';
 import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 
 const Login = () => {
+  const { resolvedTheme } = useTheme();
+
   return (
     <div className="relative flex justify-center items-center min-h-screen bg-background py-12">
       <GridPattern
@@ -31,7 +34,7 @@ const Login = () => {
               supabaseClient={supabase}
               appearance={{ theme: ThemeSupa }}
               providers={[]}
-              theme="light"
+              theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
             />
           </CardContent>
         </Card>
