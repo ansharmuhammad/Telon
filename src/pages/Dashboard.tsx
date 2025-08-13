@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { BackgroundConfig } from '@/types/trello';
 import { getBackgroundThumbnailStyle, cn } from '@/lib/utils';
@@ -33,6 +32,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell';
 import { UserNav } from '@/components/layout/UserNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import GridPattern from '@/components/ui/grid-pattern';
+import { Label } from '@/components/ui/label';
 
 type BoardSummary = {
   id: string;
@@ -53,6 +53,7 @@ const Dashboard = () => {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Omit<BoardSummary, 'last_viewed_at' | 'is_closed'> | null>(null);
   const [newBoardNameFromTemplate, setNewBoardNameFromTemplate] = useState('');
+  const [newBoardName, setNewBoardName] = useState('');
 
   const fetchBoards = useCallback(async () => {
     if (!session?.user) return;
@@ -111,6 +112,25 @@ const Dashboard = () => {
       setIsTemplateDialogOpen(false);
       setSelectedTemplate(null);
       setNewBoardNameFromTemplate('');
+    }
+    setIsCreating(false);
+  };
+
+  const handleCreateBoard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBoardName.trim() || isCreating || !session?.user) return;
+    setIsCreating(true);
+
+    const { error } = await supabase
+      .from('boards')
+      .insert({ name: newBoardName.trim(), user_id: session.user.id });
+
+    if (error) {
+      showError(`Failed to create board: ${error.message}`);
+    } else {
+      showSuccess(`Board '${newBoardName.trim()}' created!`);
+      fetchBoards();
+      setNewBoardName('');
     }
     setIsCreating(false);
   };
@@ -214,11 +234,20 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <Card className="h-32 flex items-center justify-center border-dashed hover:border-primary hover:text-primary transition-colors">
-                  <Link to="#" onClick={(e) => { e.preventDefault(); const el = document.getElementById('new-board-name'); if (el) el.focus(); }} className="text-center text-muted-foreground">
-                    <Plus className="h-8 w-8 mx-auto mb-2" />
-                    Create new board
-                  </Link>
+                <Card className="h-32 flex flex-col justify-center p-4 border-dashed bg-card hover:border-primary transition-colors">
+                  <form onSubmit={handleCreateBoard} className="space-y-2">
+                    <Label htmlFor="new-board-name" className="text-center block font-semibold text-muted-foreground">Create new board</Label>
+                    <Input
+                      id="new-board-name"
+                      placeholder="Board name..."
+                      value={newBoardName}
+                      onChange={(e) => setNewBoardName(e.target.value)}
+                      disabled={isCreating}
+                    />
+                    <Button type="submit" className="w-full" disabled={!newBoardName.trim() || isCreating}>
+                      {isCreating ? 'Creating...' : 'Create'}
+                    </Button>
+                  </form>
                 </Card>
                 {openBoards.map((board) => (
                   <Link to={`/board/${board.id}`} key={board.id}><BoardCard board={board} /></Link>
