@@ -114,7 +114,7 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
           isDragging && 'opacity-50'
         )}
       >
-        <CardHeader className={cn("p-3 flex flex-row items-center justify-between", isOverLimit && "bg-yellow-300/50 dark:bg-yellow-800/30")}>
+        <CardHeader className={cn("p-3 flex flex-row items-center justify-between")}>
           <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           {isEditing ? (
             <form onSubmit={handleTitleSubmit} className="flex-grow mx-2">
@@ -125,6 +125,18 @@ export const TrelloList = ({ list, lists, onCardClick, onAddCard, onUpdateCard, 
               {list.title}
             </CardTitle>
           )}
+          
+          {list.card_limit !== null && (
+            <span className={cn(
+              "text-xs font-semibold px-2 py-1 rounded-md mr-1",
+              isOverLimit 
+                ? "bg-red-500 text-white" 
+                : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+            )}>
+              {list.cards.length}/{list.card_limit}
+            </span>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
