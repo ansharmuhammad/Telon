@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { UserPlus, Loader2 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type InviteUserPopoverProps = {
   boardId: string;
@@ -15,6 +16,7 @@ export const InviteUserPopover = ({ boardId }: InviteUserPopoverProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +44,16 @@ export const InviteUserPopover = ({ boardId }: InviteUserPopoverProps) => {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="hover:bg-gray-700">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Invite
-        </Button>
+        {isMobile ? (
+          <Button variant="ghost" size="icon" className="hover:bg-gray-700">
+            <UserPlus className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="ghost" className="hover:bg-gray-700">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
         <form onSubmit={handleInvite} className="space-y-4">

@@ -23,6 +23,7 @@ import { InviteUserPopover } from './InviteUserPopover';
 import { NotificationBell } from './NotificationBell';
 import { UserNav } from './UserNav';
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type HeaderProps = {
   board: Board | null;
@@ -36,6 +37,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
   const [title, setTitle] = useState(board?.name || '');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<'main' | 'background'>('main');
+  const isMobile = useIsMobile();
 
   const handleTitleSubmit = () => {
     if (title.trim() && title !== board?.name) {
@@ -53,7 +55,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
 
   return (
     <header className="flex items-center justify-between p-2 bg-gray-900/80 backdrop-blur-sm text-white">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-1 md:gap-4">
         <Link to="/dashboard" className="flex items-center gap-2 hover:bg-gray-700 rounded-md p-1">
           <img src="/telon_logo_32x32.png" alt="TELON Logo" className="h-8 w-8" />
         </Link>
@@ -67,17 +69,17 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
                 if (e.key === 'Enter') handleTitleSubmit();
                 if (e.key === 'Escape') setIsEditingTitle(false);
               }}
-              className="text-xl font-bold bg-transparent border-white h-9"
+              className="text-lg md:text-xl font-bold bg-transparent border-white h-9"
               autoFocus
             />
           ) : (
-            <h1 className="text-xl font-bold cursor-pointer p-1 rounded-md hover:bg-white/20" onClick={() => { setIsEditingTitle(true); setTitle(board.name); }}>
+            <h1 className="text-lg md:text-xl font-bold cursor-pointer p-1 rounded-md hover:bg-white/20 truncate max-w-[150px] md:max-w-none" onClick={() => { setIsEditingTitle(true); setTitle(board.name); }}>
               {board.name}
             </h1>
           )
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0 md:gap-2">
         <GlobalSearch />
         {board && <InviteUserPopover boardId={board.id} />}
         {board && (
@@ -137,7 +139,7 @@ export const Header = ({ board, onBackgroundChange, onCloseBoard, onBoardNameCha
             </PopoverContent>
           </Popover>
         )}
-        <AnimatedThemeToggler />
+        {!isMobile && <AnimatedThemeToggler />}
         <NotificationBell />
         <UserNav />
       </div>
