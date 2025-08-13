@@ -12,6 +12,8 @@ This project is a feature-rich clone of Trello, now named **TELON**, built from 
 -   **Drag & Drop**: Seamlessly reorder cards within and between lists using `@atlaskit/pragmatic-drag-and-drop`.
 -   **Secure Authentication**: User login and management handled by Supabase Auth, with options for both email/password and public, no-account-needed boards.
 -   **Rich Card Details**: Cards support descriptions, labels, checklists with progress bars, file attachments, due dates, and dynamic cover images.
+-   **Card Relations**: Link cards together to show dependencies or related tasks.
+-   **WIP Limits**: Set Work-In-Progress limits on lists to improve workflow.
 -   **Dynamic Backgrounds**: Customize board backgrounds with solid colors, images from the Unsplash API, or your own custom uploads.
 -   **Global Search**: A debounced search input allows you to quickly find cards across all your boards.
 -   **Notifications**: Receive in-app notifications when you are invited to a board or mentioned in a comment.
@@ -154,7 +156,8 @@ Follow these steps to get the project running locally.
         name text NOT NULL,
         background_config jsonb,
         is_closed boolean NOT NULL DEFAULT false,
-        created_at timestamp with time zone NOT NULL DEFAULT now()
+        created_at timestamp with time zone NOT NULL DEFAULT now(),
+        last_viewed_at timestamp with time zone DEFAULT NULL
     );
 
     CREATE TABLE public.board_members (
@@ -170,7 +173,8 @@ Follow these steps to get the project running locally.
         board_id uuid NOT NULL REFERENCES public.boards(id) ON DELETE CASCADE,
         title text NOT NULL,
         position double precision NOT NULL,
-        created_at timestamp with time zone NOT NULL DEFAULT now()
+        created_at timestamp with time zone NOT NULL DEFAULT now(),
+        card_limit integer DEFAULT NULL
     );
 
     CREATE TABLE public.cards (
